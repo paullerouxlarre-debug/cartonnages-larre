@@ -31,12 +31,12 @@
     [5.85, "Les groupes offset déposent les encres successives sur la feuille entière."],
     [9.1, "En réception, les feuilles s’empilent de nouveau. Le même décor apparaît quatre fois sur chacune."],
     [14, "Au poste de découpe, une palette de feuilles imprimées alimente l’autoplatine."],
-    [16.35, "À Bayonne, un opérateur règle la forme de découpe. Photographie de l’atelier."],
+    [16.35, "La feuille imprimée quitte la pile et avance vers la platine."],
     [17.9, "La platine monte contre la forme. Les filets découpent les contours et marquent les plis."],
     [21, "Les déchets se détachent autour des quatre formes découpées."],
     [23.6, "La séparation des poses donne quatre piles distinctes. Les rabats se voient sur leur contour."],
     [26, "Au margeur de la plieuse-colleuse, les poses sont empilées à plat, côté intérieur visible."],
-    [28.30, "Les courroies et les galets de la plieuse-colleuse de Bayonne. Photographie de l’atelier."],
+    [28.30, "Les bandes entraînent la pose à plat vers le bec de colle."],
     [29.25, "La colle se dépose sur la patte latérale pendant que les bandes entraînent la pose."],
     [32, "Les guides rabattent les panneaux. La face imprimée revient à l’extérieur."],
     [36, "Le joint est pressé. Les étuis collés se suivent à plat en une nappe régulière."],
@@ -75,7 +75,7 @@
   function compact() { return motion.matches || mediaFailed; }
 
   function framePath(name) {
-    return "assets/film/" + (portrait.matches ? "portrait/" : "") + name + ".webp?v=3";
+    return "assets/film/" + (portrait.matches ? "portrait/" : "") + name + ".webp?v=4";
   }
 
   function measure() {
@@ -304,7 +304,7 @@
     const request = ++inspectorRequest;
     refresh();
     try {
-      const scene = await import("./scene.js?v=3");
+      const scene = await import("./scene.js?v=4");
       if (!inspectorOpen || request !== inspectorRequest) return;
       canvas.hidden = false;
       rendererPromise ||= scene.atelierRenderer(canvas);
@@ -393,7 +393,7 @@
   motion.addEventListener("change", motionChange);
   function chooseFraming() {
     film.poster = framePath("feuille");
-    const file = portrait.matches ? "fabrication-mobile.mp4?v=3" : "fabrication.mp4?v=3";
+    const file = portrait.matches ? "fabrication-mobile.mp4?v=4" : "fabrication.mp4?v=4";
     if (loaded && !mediaFailed && film.currentSrc && !film.currentSrc.endsWith("/" + file)) {
       const resume = active;
       pause();

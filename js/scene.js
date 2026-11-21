@@ -164,15 +164,6 @@ export async function atelierRenderer(canvas) {
   floorMat.map=concrete;floorMat.color.set(0xb6b8b0);
   wood.colorSpace=T.SRGBColorSpace;wood.anisotropy=8;
   const props=loadingProps(wood),sets=new Map();
-  const photos=new Map();
-  const stillCamera=new T.OrthographicCamera(-1,1,1,-1,.1,3);stillCamera.position.z=1;
-  const picture=new T.Scene(), photoMaterial=new T.MeshBasicMaterial({toneMapped:false});
-  const frame=new T.Mesh(new T.PlaneGeometry(2,2),photoMaterial);picture.add(frame);
-  async function loadInserts(){
-    await Promise.all(['autoplatine','courroies'].map(async name=>{
-      const map=await loader.loadAsync('assets/images/'+name+'.webp');map.colorSpace=T.SRGBColorSpace;photos.set(name,map);
-    }));
-  }
   const sun=new T.DirectionalLight(0xfff2e1,.98);
   sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
   Object.assign(sun.shadow.camera,{near:.05,far:25,left:-2,right:2,top:2,bottom:-2});
@@ -197,17 +188,19 @@ export async function atelierRenderer(canvas) {
       renderer.setPixelRatio(ratio);renderer.setSize(w,h,false);grading.resize(Math.round(w*ratio),Math.round(h*ratio));
       camera.aspect=w/h;camera.updateProjectionMatrix();
     }
-    const insert=t>=16.35&&t<17.9?'autoplatine':t>=28.30&&t<29.25?'courroies':null;
-    if(insert && photos.has(insert)){
-      const map=photos.get(insert), sourceRatio=map.image.width/map.image.height, ratio=w/h;
-      const zoom=1+.035*(insert==='autoplatine'?t-16.35:t-28.30);
-      frame.scale.set(Math.max(1,sourceRatio/ratio)*zoom,Math.max(1,ratio/sourceRatio)*zoom,1);
-      photoMaterial.map=map;photoMaterial.needsUpdate=true;renderer.setRenderTarget(null);renderer.render(picture,stillCamera);return;
-    }
     const v=ease(start,end,t),vertical=w/h<1.22;
     const aim=vector(...p), direction=vector(...axis).normalize();
     if(k===2)aim.x=mix(-1.51,-.38,v);
     if(k===3)aim.x=mix(.46,1.45,v);
+    // Track the stock from the feeder until the next tool takes over.
+    if(start===14){
+      const advance=ease(15.35,18.55,t);
+      aim.set(mix(-2.05,-.55,advance),paperY,.03);
+    }
+    if(start===26){
+      const advance=ease(26.8,29,t);
+      aim.set(mix(-2.65,-1.42,advance),paperY+.025,.07);
+    }
     if(k===8)aim.x+=ease(22.3,23.6,t)*.48;
     if(k===12)aim.x=mix(-.20,1.28,v);
     if(k===13)aim.x=mix(1.92,2.69,v);
@@ -229,5 +222,5 @@ export async function atelierRenderer(canvas) {
     Object.assign(sun.shadow.camera,{left:-radius,right:radius,top:radius,bottom:-radius});sun.shadow.camera.updateProjectionMatrix();
     grading.draw(camera,distance);
   }
-  return {draw,loadInserts};
+  return {draw};
 }

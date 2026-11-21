@@ -22,7 +22,6 @@ async function render(base, directory, portrait) {
       const {atelierRenderer} = await import('./js/scene.js');
       const canvas = document.querySelector('canvas');
       const scene = await atelierRenderer(canvas);
-      await scene.loadInserts();
       window.renderFrame = time => {
         scene.draw(time);
         return canvas.toDataURL('image/jpeg',.95).split(',')[1];
