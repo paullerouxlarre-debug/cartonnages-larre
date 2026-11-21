@@ -1,0 +1,49 @@
+// Offline renderer for the web scene. Requires Playwright, Chromium and FFmpeg.
+const {chromium} = require('playwright');
+const {spawn} = require('node:child_process');
+const {mkdir} = require('node:fs/promises');
+const path = require('node:path');
+const {once} = require('node:events');
+
+async function render(base, directory, portrait) {
+  const site = new URL(base.endsWith('/') ? base : base + '/');
+  const executablePath = process.env.CHROME_BIN;
+  const width = portrait ? 720 : 1280;
+  const height = portrait ? 746 : 756;
+  await mkdir(directory, {recursive:true});
+  const browser = await chromium.launch({headless:true,executablePath,args:['--enable-unsafe-swiftshader']});
+  let encoder;
+  try {
+    const page = await browser.newPage({viewport:{width,height},deviceScaleFactor:1});
+    const url = new URL('render-frame',site).href;
+    await page.route(url, route=>route.fulfill({contentType:'text/html',body:'<!doctype html><style>*{margin:0}canvas{display:block;width:100vw;height:100vh}</style><canvas></canvas>'}));
+    await page.goto(url);
+    await page.evaluate(async () => {
+      const {atelierRenderer} = await import('./js/scene.js');
+      const canvas = document.querySelector('canvas');
+      const scene = await atelierRenderer(canvas);
+      await scene.loadInserts();
+      window.renderFrame = time => {
+        scene.draw(time);
+        return canvas.toDataURL('image/jpeg',.95).split(',')[1];
+      };
+    });
+    const dest = path.join(directory,portrait?'fabrication-mobile.mp4':'fabrication.mp4');
+    encoder = spawn('ffmpeg',['-hide_banner','-loglevel','error','-y','-f','image2pipe','-framerate','24','-c:v','mjpeg','-i','pipe:0','-an','-c:v','libx264','-preset','fast','-crf','20','-pix_fmt','yuv420p','-g','12','-keyint_min','12','-sc_threshold','0','-movflags','+faststart',dest],{stdio:['pipe','inherit','inherit']});
+    const finished = once(encoder,'close');
+    for(let frame=0;frame<=52*24;frame++){
+      const data = await page.evaluate(t=>window.renderFrame(t),frame/24);
+      if (!encoder.stdin.write(Buffer.from(data,'base64'))) await once(encoder.stdin,'drain');
+      if(frame%240===0) console.log(frame/24+' s');
+    }
+    encoder.stdin.end();
+    const [code] = await finished;
+    if(code!==0) throw Error('FFmpeg '+code);
+  } finally {
+    if(encoder && encoder.exitCode===null) encoder.kill();
+    await browser.close();
+  }
+}
+const [base, directory, flag] = process.argv.slice(2);
+if(!base || !directory) throw Error('Usage : node outils/rendre-film.cjs URL DOSSIER [--portrait]');
+render(base,directory,flag==='--portrait').catch(error=>{console.error(error);process.exitCode=1;});

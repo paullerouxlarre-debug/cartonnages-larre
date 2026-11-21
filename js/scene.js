@@ -1,139 +1,233 @@
 import * as T from '../assets/vendor/three.module.min.js';
-import {makeCarton} from './etui.js';
-import {buildWorkshop} from './atelier.js';
-import {addSurfaceFinish,ease,mix,keys} from './matiere.js';
+import {RGBELoader} from '../assets/vendor/RGBELoader.js';
+import {makePressSheet,makeStrippedSheet,makeBlankPile,makeCarton} from './etui.js';
+import {buildStation} from './atelier.js';
+import {box,group,ease,mix} from './matiere.js';
+import {loadingProps} from './logistique.js';
 
-const path=[
-  [0,-13.05],[2,-11.56],[3.7,-9.60],[5.5,-7.55],[7.30,-5.50],[9.10,-3.45],
-  [10.50,-1.72],[12.94,2.10],[14.95,2.10],[17.22,4.79],[18.50,5.22],
-  [21.40,7.48],[22.40,8.32],[25.10,10.58],[28.12,13.85],[29.50,15.85],
-  [32.0,18.90],[44,18.90]
-];
+const duration=52, paperY=1.16;
+const vector=(x,y,z)=>new T.Vector3(x,y,z);
+const stockPath='assets/matieres/';
+const coating=(color,roughness=.8,metalness=0)=>new T.MeshStandardMaterial({color,roughness,metalness});
+const floorMat=coating(0x858783,.79,.04), metal=coating(0x444b4a,.42,.65);
+const benchHeight=.91;
 
-// Travel and camera choreography share the same timeline. Positions are offsets from the sheet.
+function floor(parent) {
+  box(parent,0,-.056,0,24,.11,18,floorMat);
+  for(const x of [-8,-4,0,4,8])box(parent,x,.0002,0,.007,.001,18,metal);
+}
+function folded(carton,x,y,z,extra={}) {
+  carton.pose({x,y,z,roll:Math.PI,foldLeft:1,foldBack:1,glue:1,...extra});
+}
+function packingTable(g,props,x=0) {
+  box(g,x,benchHeight-.022,0,1.7,.044,.89,props.wood);
+  for(const dx of [-.74,.74])for(const dz of [-.34,.34])box(g,x+dx,.439,dz,.043,.878,.043,metal);
+}
+function stockAtDelivery(props,g,x) {return props.sheetLoad(g,x,true,1.093);}
+
+function stationSet(scene,id,props) {
+  const root=group(scene);
+  root.rotation.y=[.35,-1.05,1.52,-.52,2.63][id];
+  floor(root);
+  const kind=['offset','decoupe','collage'][id];
+  const machine=kind?buildStation(root,kind):null;
+  let update;
+  if(id===0){
+    props.sheetLoad(root,-3.15,false,1.157);
+    stockAtDelivery(props,root,2.95);
+    const sheet=makePressSheet(root);
+    update=t=>{
+      let x,y,ink;
+      if(t<4.8){
+        const feed=ease(1.7,4.8,t);
+        x=-3.15+feed*1.16;y=1.161+Math.sin(feed*Math.PI)*.042;ink=0;
+      }else if(t<9.1){
+        x=mix(-2.10,1.88,(t-4.8)/4.3);y=paperY;ink=ease(-1.75,1.54,x);
+      }else{
+        const phase=((t-9.1)/1.48)%1;
+        x=mix(2.06,2.95,ease(0,.7,phase));y=mix(1.178,1.095,ease(.50,.93,phase));ink=1;
+      }
+      sheet.pivot.position.set(x,y,0);sheet.setInk(ink);
+      machine.animate(t,{press:0,travel:t*1.2,cutaway:t>=5.85&&t<9.1?1:0,feeder:ease(1.50,2.1,t)*(1-ease(2.5,3.4,t))});
+    };
+  }else if(id===1){
+    props.sheetLoad(root,-2.05,true,1.156);
+    props.batches(root,1.65,0,.147);
+    const sheet=makePressSheet(root),strip=makeStrippedSheet(root);
+    sheet.setInk(1);
+    update=t=>{
+      const s=t-14,press=ease(4.7,5.36,s)*(1-ease(5.67,6.32,s));
+      sheet.pivot.visible=s<7;strip.pivot.visible=s>=7;
+      sheet.pivot.position.set(mix(-2.05,-.55,ease(1.35,4.55,s)),paperY+.044*press,0);
+      strip.pivot.position.set(mix(.55,1.65,ease(8.5,10.8,s)),mix(paperY,.147+.2935,ease(10.4,11.8,s)),0);
+      strip.setSeparation(ease(7.2,8.73,s));
+      machine.animate(s,{press,travel:s,cutaway:s>=3.9?1:0,stripping:ease(7,7.7,s)*(1-ease(8.2,8.8,s)),feeder:ease(1.2,1.7,s)*(1-ease(2.1,3.15,s))});
+    };
+  }else if(id===2){
+    const pile=makeBlankPile(root,{count:160});
+    pile.pivot.rotation.x=Math.PI;pile.pivot.position.set(-2.65,paperY+pile.height+.001,0);
+    const carton=makeCarton(root);
+    const shingle=Array.from({length:7},()=>makeCarton(root));
+    update=t=>{
+      const s=t-26;
+      const x=s<3?mix(-2.65,-1.42,ease(.8,3,s)):s<6?mix(-1.42,-.37,(s-3)/3):s<10?mix(-.37,1.85,(s-6)/4):mix(1.85,2.80,(s-10)/2);
+      carton.pose({x,y:paperY+.0012,z:0,roll:Math.PI,foldLeft:ease(-.73,.30,x),foldBack:ease(.29,1.43,x),open:0,close:0,glue:ease(-1.11,-.77,x)});
+      shingle.forEach((next,i)=>{
+        next.pivot.visible=s>=9.6;
+        if(next.pivot.visible) folded(next,2.12+i*.085+((s-9.6)*.085)%.085,paperY+.002+(7-i)*.0018,0);
+      });
+      machine.animate(s,{press:0,travel:x+2.65,cutaway:s>2.5?1:0,feeder:0});
+    };
+  }else if(id===3){
+    packingTable(root,props);
+    const pack=props.crate(root,0,benchHeight,0), carton=makeCarton(root);
+    for(let i=0;i<11;i++) {
+      const sample=makeCarton(root);
+      folded(sample,0,benchHeight+.017+i*.002,0);
+    }
+    const van=props.vehicle(root);van.position.z=-4;
+    box(root,-2.86,1.073,-4,1.50,.065,2.23,metal);
+    for(const z of [-4.72,-3.28])box(root,-2.86,.79,z,1.38,.35,.085,metal);
+    const load=props.pallet(root,-3.2,-4);
+    for(let j=0;j<2;j++)for(const x of [-.245,.245])for(const z of [-.245,.245])props.crate(load,x,.147+j*.26,z,false);
+    update=t=>{
+      const s=t-38,placing=ease(0,2.45,s),loading=ease(4.3,6.95,s);
+      folded(carton,0,mix(benchHeight+.40,benchHeight+.042,placing),mix(.12,0,placing));
+      pack.close(ease(2.3,3.8,s));
+      load.position.set(mix(-3.20,-1.05,loading),1.106,-4);
+      van.position.x=ease(6.2,7,s)*.21;
+    };
+  }else{
+    packingTable(root,props);
+    // The unpacked carton stands on a charcoal cutting mat at the receiving bench.
+    box(root,-.24,benchHeight+.001,0,.64,.002,.65,coating(0x3c514e,.85));
+    props.crate(root,.48,benchHeight,-.29);
+    const carton=makeCarton(root);
+    update=(t,turn)=>{
+      const s=t-45,lift=ease(.35,2.6,s),open=ease(2.15,4.45,s),shut=ease(4.4,6.1,s);
+      carton.pose({x:mix(.47,-.09,lift),y:mix(benchHeight+.226,benchHeight+.1001,lift)+.145*Math.sin(lift*Math.PI),
+        z:mix(-.29,.08,lift),rise:lift*Math.PI/2,yaw:-.24+turn,foldLeft:1,foldBack:1,glue:1,open,close:shut});
+    };
+  }
+  return {root,update};
+}
+
+// Each shot has a cut, an optical axis and its own subject distance, in metres.
 const shots=[
-  [0,4.9,4.7,7.6, 2.1,.12,0],
-  [2,3.42,4.59,5.84, 1.05,.10,.18],
-  [5.5,1.18,5.44,3.86, .32,.10,.39],
-  [9.10,1.70,4.26,4.34, -.06,.13,.32],
-  [10.50,3.38,3.95,4.78, .34,.24,.13],
-  [13.28,-2.31,1.74,5.09, .0,.45,.15],
-  [14.95,-2.26,1.38,5.0, .0,.45,.15],
-  [17.08,2.98,4.08,4.78, .15,.07,.08],
-  [18.50,3.2,3.38,5.27, .72,.19,0],
-  [22.4,2.8,3.05,4.40, .0,.19,0],
-  [26.47,1.15,3.74,4.78, .08,.13,0],
-  [29.50,3.80,4.40,6.12, 1.20,0,0],
-  [32.1,2.4,3.91,5.11, .05,-.05,0],
-  [33.75,3.32,3.80,6.30, .65,.0,0],
-  [35.78,.67,4.56,10.18, 2.30,.29,0],
-  [37.48,.52,3.54,9.40, 2.32,.33,0],
-  [37.52,2.77,2.66,3.92, .0,.06,0],
-  [40,2.14,1.50,3.42, 0,.06,0],
-  [44,2.47,1.24,3.70, 0,.07,0]
+  [0,0,[-2.97,.79,.02],[-1.28,.66,1.20],2.98,2.49],
+  [2.45,0,[-3.09,1.166,.11],[-.61,.27,.62],1.11,.94],
+  [4.8,0,[-.56,1.22,.03],[-.40,.29,1.10],1.04,.88],
+  [7,0,[.85,1.18,.03],[.34,.52,.87],1.20,1.06],
+  [9.1,0,[2.91,1.095,0],[1.28,.77,.08],1.61,1.51],
+  [11.7,0,[2.95,.75,.04],[1.29,.73,.18],2.11,2.42],
+  [14,1,[-1.87,.91,.02],[-.98,.63,1.32],2.12,1.75],
+  [17.9,1,[-.55,1.17,-.05],[-.21,.31,1],.96,.84],
+  [21,1,[.56,1.115,.02],[.12,.69,.81],1.13,1.08],
+  [23.6,1,[1.65,.41,0],[1,.72,.32],1.43,1.36],
+  [26,2,[-2.60,1.20,0],[-.51,.38,.70],1.12,.87],
+  [29,2,[-.96,1.175,.15],[.23,.29,.49],.63,.54],
+  [32,2,[.36,1.19,.05],[.24,.58,.74],.87,.94],
+  [36,2,[2.31,1.16,.01],[.41,.41,.74],1.05,.91],
+  [38,3,[0,1.115,0],[-.39,.43,.55],1.01,.88],
+  [42,3,[-2.12,1.6,-4],[-2.25,.6,.36],4.36,4.74],
+  [45,4,[.17,1.15,-.04],[-.35,.26,.43],.85,.68],
+  [47.6,4,[-.09,1.017,.08],[-.34,.16,.29],.53,.445]
 ];
-function viewAt(t){
-  let j=1;
-  while(j<shots.length-1 && t>shots[j][0])j++;
-  const a=shots[j-1], b=shots[j], u=ease(a[0],b[0],t);
-  return a.slice(1).map((v,i)=>mix(v,b[i+1],u));
+function lens(scene,renderer) {
+  const target=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,depthBuffer:true});
+  target.samples=renderer.capabilities.isWebGL2?2:0;
+  target.depthTexture=new T.DepthTexture(1,1);
+  const uniforms={colour:{value:target.texture},depthMap:{value:target.depthTexture},pixel:{value:new T.Vector2()},focus:{value:1},near:{value:.012},far:{value:90}};
+  const shader=new T.ShaderMaterial({uniforms,depthTest:false,depthWrite:false,vertexShader:'varying vec2 coord; void main(){coord=uv;gl_Position=vec4(position.xy,0.,1.);}',
+    fragmentShader:`varying vec2 coord;uniform sampler2D colour,depthMap;uniform vec2 pixel;uniform float focus,near,far;
+    void main(){float d=texture2D(depthMap,coord).r;float z=near*far/(far-d*(far-near));float blur=min(5.,abs(1.-focus/z)*4.2);
+    vec3 c=texture2D(colour,coord).rgb*2.;for(int i=0;i<12;i++){float a=float(i)*2.39996;vec2 p=vec2(cos(a),sin(a))*sqrt((float(i)+.5)/12.);c+=texture2D(colour,coord+pixel*blur*p).rgb;}
+    c/=14.; c*=1.-.115*dot(coord-.5,coord-.5);gl_FragColor=vec4(c,1.);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+    }`});
+  const pass=new T.Scene();pass.add(new T.Mesh(new T.PlaneGeometry(2,2),shader));
+  const flat=new T.Camera();
+  return {resize(w,h){target.setSize(w,h);uniforms.pixel.value.set(1/w,1/h);},draw(camera,distance){uniforms.focus.value=distance;renderer.setRenderTarget(target);renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(pass,flat);}};
 }
 
-function reflections(renderer) {
-  const room=new T.Scene();
-  room.background=new T.Color(.18,.23,.27);
-  const card=(x,y,z,w,h,colour)=>{
-    const plane=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({color:colour,side:T.DoubleSide}));
-    plane.position.set(x,y,z);plane.lookAt(0,0,0);room.add(plane);
-  };
-  card(1,6,1,13,4,new T.Color(5,5.1,4.6));
-  card(-5,2,1,3,7,new T.Color(1.4,2.5,2.3));
-  card(6,0,-3,3,7,new T.Color(2.9,1.43,.76));
-  card(0,-5,0,15,15,new T.Color(.10,.14,.16));
-  const generator=new T.PMREMGenerator(renderer);
-  const env=generator.fromScene(room,.016,.1,30);
-  generator.dispose();
-  room.traverse(o=>{if(o.isMesh){o.geometry.dispose();o.material.dispose();}});
-  return env;
-}
-
-export function atelierRenderer(canvas) {
-  const renderer=new T.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance',
-    preserveDrawingBuffer:false});
-  renderer.toneMapping=T.ACESFilmicToneMapping;
-  renderer.toneMappingExposure=.89;
-  renderer.outputColorSpace=T.SRGBColorSpace;
-  renderer.shadowMap.enabled=true;
-  renderer.shadowMap.type=T.PCFSoftShadowMap;
+export async function atelierRenderer(canvas) {
+  const renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
+  renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.81;
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
   const scene=new T.Scene();
-  scene.background=new T.Color(0x283d43);
-  scene.fog=new T.FogExp2(0x31464a,.044);
-  const env=reflections(renderer);
-  scene.environment=env.texture;
-  const sky=new T.HemisphereLight(0xe4f8fa,0x9d8569,.65);
-  scene.add(sky);
-  const key=new T.DirectionalLight(0xffe9c8,2.42);
-  key.castShadow=true;
-  key.shadow.mapSize.set(1024,1024);
-  Object.assign(key.shadow.camera,{left:-9,right:9,top:9,bottom:-9,near:.5,far:38});
-  key.shadow.normalBias=.015;key.shadow.bias=-.00045;
-  scene.add(key,key.target);
-  const fill=new T.DirectionalLight(0x9bd5da,.80);
-  fill.position.set(-5,4,-7);scene.add(fill);
-  const accent=new T.PointLight(0xffcb97,15,12,2);accent.position.set(36.0,5.5,2.4);scene.add(accent);
-  const camera=new T.PerspectiveCamera(40,1,.08,100);
-  addSurfaceFinish();
-  const world=buildWorkshop(scene), carton=makeCarton(scene);
-  const aim=new T.Vector3(), eye=new T.Vector3();
-  let width=0,height=0,mobile=false;
-  function resize() {
+  const loader=new T.TextureLoader();
+  const [env,wood,concrete]=await Promise.all([new RGBELoader().loadAsync(stockPath+'atelier.hdr'),loader.loadAsync(stockPath+'bois.webp'),loader.loadAsync(stockPath+'sol.webp')]);
+  env.mapping=T.EquirectangularReflectionMapping;
+  scene.environment=scene.background=env;scene.backgroundBlurriness=.075;scene.backgroundIntensity=.43;
+  concrete.colorSpace=T.SRGBColorSpace;concrete.wrapS=concrete.wrapT=T.RepeatWrapping;concrete.repeat.set(9,7);concrete.anisotropy=8;
+  floorMat.map=concrete;floorMat.color.set(0xb6b8b0);
+  wood.colorSpace=T.SRGBColorSpace;wood.anisotropy=8;
+  const props=loadingProps(wood),sets=new Map();
+  const photos=new Map();
+  const stillCamera=new T.OrthographicCamera(-1,1,1,-1,.1,3);stillCamera.position.z=1;
+  const picture=new T.Scene(), photoMaterial=new T.MeshBasicMaterial({toneMapped:false});
+  const frame=new T.Mesh(new T.PlaneGeometry(2,2),photoMaterial);picture.add(frame);
+  async function loadInserts(){
+    await Promise.all(['autoplatine','courroies'].map(async name=>{
+      const map=await loader.loadAsync('assets/images/'+name+'.webp');map.colorSpace=T.SRGBColorSpace;photos.set(name,map);
+    }));
+  }
+  const sun=new T.DirectionalLight(0xfff2e1,.98);
+  sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+  Object.assign(sun.shadow.camera,{near:.05,far:25,left:-2,right:2,top:2,bottom:-2});
+  sun.shadow.normalBias=.00022;sun.shadow.bias=-.00009;scene.add(sun,sun.target);
+  scene.add(new T.HemisphereLight(0xeaf0ff,0x857a6e,.12));
+  const camera=new T.PerspectiveCamera(38,1,.012,90),grading=lens(scene,renderer);
+  let width=0,height=0,previous=-1;
+  function draw(time,turn=0){
+    const t=Math.min(duration,Math.max(0,time));
+    let k=shots.length-1;while(k>0&&shots[k][0]>t)k--;
+    const [start,id,p,axis,from,to]=shots[k],end=shots[k+1]?.[0]||duration;
+    if(previous!==id){
+      if(sets.has(previous))sets.get(previous).root.visible=false;
+      if(!sets.has(id))sets.set(id,stationSet(scene,id,props));
+      sets.get(id).root.visible=true;previous=id;
+    }
+    const set=sets.get(id);set.update(t,turn);
     const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);
-    if(width===w && height===h)return;
-    width=w;height=h;mobile=w/h<1.18;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,w<700?1.55:1.65));
-    renderer.setSize(w,h,false);camera.aspect=w/h;
-    camera.fov=mobile?48:40;camera.updateProjectionMatrix();
+    if(width!==w||height!==h){
+      width=w;height=h;
+      const ratio=Math.min(window.devicePixelRatio||1,1.5);
+      renderer.setPixelRatio(ratio);renderer.setSize(w,h,false);grading.resize(Math.round(w*ratio),Math.round(h*ratio));
+      camera.aspect=w/h;camera.updateProjectionMatrix();
+    }
+    const insert=t>=16.35&&t<17.9?'autoplatine':t>=28.30&&t<29.25?'courroies':null;
+    if(insert && photos.has(insert)){
+      const map=photos.get(insert), sourceRatio=map.image.width/map.image.height, ratio=w/h;
+      const zoom=1+.035*(insert==='autoplatine'?t-16.35:t-28.30);
+      frame.scale.set(Math.max(1,sourceRatio/ratio)*zoom,Math.max(1,ratio/sourceRatio)*zoom,1);
+      photoMaterial.map=map;photoMaterial.needsUpdate=true;renderer.setRenderTarget(null);renderer.render(picture,stillCamera);return;
+    }
+    const v=ease(start,end,t),vertical=w/h<1.22;
+    const aim=vector(...p), direction=vector(...axis).normalize();
+    if(k===2)aim.x=mix(-1.51,-.38,v);
+    if(k===3)aim.x=mix(.46,1.45,v);
+    if(k===8)aim.x+=ease(22.3,23.6,t)*.48;
+    if(k===12)aim.x=mix(-.20,1.28,v);
+    if(k===13)aim.x=mix(1.92,2.69,v);
+    if(k===16)aim.x=mix(.33,-.018,v);
+    let distance=mix(from,to,v)*(vertical?1.20:1);
+    // Establish each freestanding machine before cutting in to its tool path.
+    if((t>=4 && t<5.85)||(t>=14 && t<15.65)||(t>=26 && t<27.55)){
+      const midpoint=id===0?-.08:id===1?-.10:.02;
+      aim.set(midpoint,1.11,0);
+      direction.set(id===1?-1.1:-1.48,.65,2.1).normalize();
+      distance=(id===0?7.9:id===1?5.7:6.75)*(vertical?1.23:1);
+    }
+    aim.applyAxisAngle(vector(0,1,0),set.root.rotation.y);
+    direction.applyAxisAngle(vector(0,1,0),set.root.rotation.y);
+    camera.position.copy(aim).addScaledVector(direction,distance);camera.lookAt(aim);
+    if(!vertical)camera.setViewOffset(w,h,-w*.065,-h*.025,w,h);else camera.clearViewOffset();
+    sun.position.copy(aim).add(vector(-3.0,6.5,2.6));sun.target.position.copy(aim);
+    const radius=distance<.8?.60:distance<1.6?1.45:3.8;
+    Object.assign(sun.shadow.camera,{left:-radius,right:radius,top:radius,bottom:-radius});sun.shadow.camera.updateProjectionMatrix();
+    grading.draw(camera,distance);
   }
-  function draw(time,turn=0) {
-    resize();
-    const t=Math.min(44,Math.max(0,time));
-    const arriving=t>=37.50;
-    const press=ease(12.94,13.81,t)*(1-ease(14.14,14.95,t));
-    const transfer=ease(16.83,19.0,t);
-    const lift=ease(37.72,39.65,t);
-    const erected=ease(39.18,41.64,t);
-    const flap=ease(41.54,43.71,t);
-    const departure=ease(33.72,35.48,t), drive=ease(35.64,37.55,t);
-    const flatX=keys(path,t);
-    const x=arriving?34+2.84*ease(38.1,41.3,t):flatX+departure*4.48+drive*4.6;
-    const y=arriving?1.29+1.57*lift-.37*ease(41.95,43.99,t):1.685+press*.94+Math.sin(transfer*Math.PI)*1.20
-      -.45*ease(30.12,32.00,t)+departure*1.43;
-    const z=arriving?-.30+.36*lift:0;
-    const roll=arriving?0:Math.PI*(1-transfer);
-    const yaw=arriving?mix(.16,-.47,lift)+turn*erected:0;
-    carton.pose({x,y,z,roll,yaw,rise:arriving?lift*Math.PI/2:0,
-      foldLeft:ease(20.37,24.66,t),foldBack:ease(23.11,27.95,t),
-      open:erected,close:flap,scrap:ease(15.02,17.41,t),cut:ease(13.79,14.28,t),
-      glue:ease(21.32,23.45,t),printedAt:flatX});
-    carton.pivot.visible=arriving||t<33.57;
-    for(const [roll,r,sign] of world.rollers)roll.rotation.z=(flatX+13.05)/r*sign;
-    world.platen.position.y=press*.94;
-    world.crate.close(ease(32.05,33.37,t));
-    world.load.position.set(18.9+departure*4.48+drive*4.6,.02+departure*1.43,0);
-    world.van.position.x=25.95+drive*4.6;
-    world.liftCart.position.copy(world.load.position);world.liftCart.position.y-=.014;
-    world.liftCart.visible=!arriving;
-    world.van.visible=world.load.visible=!arriving;
-    const shot=viewAt(t), lead=x;
-    const cameraBaseY=arriving?y:Math.min(y,2.0);
-    const factor=mobile?1.16:1;
-    eye.set(lead+shot[0]*factor,cameraBaseY+shot[1]*factor,z+shot[2]*factor);
-    aim.set(lead+shot[3],cameraBaseY+shot[4],z+shot[5]);
-    camera.position.copy(eye);camera.lookAt(aim);
-    if(!mobile)camera.setViewOffset(width,height,-width*.095,-height*.025,width,height);
-    else camera.clearViewOffset();
-    key.position.set(x-3.5,11.4,6.1);key.target.position.set(x,1.2,0);
-    renderer.render(scene,camera);
-  }
-  return {draw};
+  return {draw,loadInserts};
 }

@@ -1,6 +1,6 @@
 # La fabrique d’une boîte · Cartonnages Larré
 
-Une visite interactive de 44 secondes suit le même étui, de la pile de carton à son ouverture chez le client. [Voir le site sur GitHub Pages](https://paullerouxlarre-debug.github.io/cartonnages-larre/)
+Une visite interactive de 52 secondes suit un étui depuis la palette de feuilles vierges. La presse reçoit les feuilles imprimées sur une nouvelle palette. L’autoplatine en sépare quatre piles de poses, puis la plieuse-colleuse travaille les étuis un par un. [Voir le site sur GitHub Pages](https://paullerouxlarre-debug.github.io/cartonnages-larre/)
 
 ## Visiter l’atelier
 
@@ -23,3 +23,18 @@ Le dépôt se sert comme un site statique, à sa racine ou dans un sous-dossier.
 - `js/visite.js` synchronise la lecture, le défilement, les légendes et les commandes.
 - `js/scene.js`, `js/atelier.js`, `js/etui.js` et `js/matiere.js` décrivent le modèle et ses mouvements.
 - Les polices et Three.js sont hébergés dans le dépôt avec leurs licences.
+
+## Références du film
+
+La disposition des piles au margeur et en réception s’appuie sur les démonstrations filmées de Komori. [Alimentation des feuilles](https://www.komorisolutions.com/video/en/v/002.html) · [Réception des feuilles](https://www.komorisolutions.com/video/en/v/021.html)
+
+Les plans de séparation des poses et de rabattement d’un étui à patte droite ont été réglés à partir des films BOBST. [NOVACUT 106 ER, sortie des poses](https://www.youtube.com/watch?v=w7dzp3mnSg0&t=84s) · [EXPERTFOLD, pliage](https://www.youtube.com/watch?v=Jwix1kCG9Es&t=35s)
+
+Les trois ateliers sont des reconstitutions indépendantes. La lumière du hall, le grain du bois et la texture du sol proviennent de ressources CC0 de Poly Haven. [Machine Shop 01, Sergej Majboroda](https://polyhaven.com/a/machine_shop_01) · [Wood Planks Grey, Rob Tuytel](https://polyhaven.com/a/wood_planks_grey) · [Concrete Floor 02, Rob Tuytel](https://polyhaven.com/a/concrete_floor_02)
+
+Pour régénérer les vidéos depuis le site servi en HTTP, utiliser Node avec Playwright et FFmpeg, puis lancer chacune des deux commandes. La variable facultative CHROME_BIN permet de choisir Chromium ou Chrome.
+
+```sh
+node outils/rendre-film.cjs http://localhost:8080/ assets/film
+node outils/rendre-film.cjs http://localhost:8080/ assets/film --portrait
+```

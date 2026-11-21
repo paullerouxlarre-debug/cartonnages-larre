@@ -19,26 +19,31 @@
   const format = value => "0:" + String(Math.floor(value)).padStart(2, "0");
   const chapters = [
     { start: 0, post: "Impression", title: "La presse offset", image: "offset" },
-    { start: 10.5, post: "Découpe et rainage", title: "L’autoplatine", image: "decoupe" },
-    { start: 18.5, post: "Pliage et collage", title: "La plieuse-colleuse", image: "pliage" },
-    { start: 29.5, post: "Conditionnement", title: "Le départ à plat", image: "depart" },
-    { start: 37.5, post: "Réception", title: "Chez le client", image: "client" }
+    { start: 14, post: "Découpe et rainage", title: "L’autoplatine", image: "decoupe" },
+    { start: 26, post: "Pliage et collage", title: "La plieuse-colleuse", image: "pliage" },
+    { start: 38, post: "Conditionnement", title: "Le départ à plat", image: "depart" },
+    { start: 45, post: "Réception", title: "Chez le client", image: "client" }
   ];
   const captions = [
-    [0, "La feuille quitte la pile. Chaque groupe imprimant y dépose une couleur."],
-    [3.7, "Le blanchet transfère l’encre au carton. Le motif se compose, couleur après couleur."],
-    [9.1, "La feuille imprimée s’engage dans l’autoplatine."],
-    [10.5, "La feuille se place entre la platine mobile et la forme de découpe."],
-    [13, "La platine monte. Les filets coupent le contour de l’étui et marquent ses plis."],
-    [15, "La chute se détache. Les rainures dessinent déjà les faces et les rabats."],
-    [18.5, "La forme découpée entre à plat entre les courroies de la plieuse-colleuse."],
-    [21.3, "Un filet de colle se dépose sur la patte latérale. Les guides relèvent le premier pan."],
-    [24.5, "Le pan opposé recouvre la patte. Les courroies pressent le joint et l’étui ressort à plat."],
-    [29.5, "Les étuis collés se superposent à plat dans la caisse de transport."],
-    [33.2, "La caisse se referme. La palette rejoint le camion pour l’expédition."],
-    [37.5, "À la réception, un étui encore à plat sort de la caisse."],
-    [39.2, "Les faces s’écartent et l’étui prend son volume."],
-    [41.6, "Les rabats se referment. Le motif imprimé au début du parcours habille la boîte."]
+    [0, "Au margeur, les feuilles de carton vierge sont empilées sur une palette."],
+    [2.45, "Les ventouses soulèvent la feuille du dessus et la présentent à la presse."],
+    [4, "Du margeur à la réception, les groupes imprimants se succèdent dans la presse offset."],
+    [5.85, "Les groupes offset déposent les encres successives sur la feuille entière."],
+    [9.1, "En réception, les feuilles s’empilent de nouveau. Le même décor apparaît quatre fois sur chacune."],
+    [14, "Au poste de découpe, une palette de feuilles imprimées alimente l’autoplatine."],
+    [16.35, "À Bayonne, un opérateur règle la forme de découpe. Photographie de l’atelier."],
+    [17.9, "La platine monte contre la forme. Les filets découpent les contours et marquent les plis."],
+    [21, "Les déchets se détachent autour des quatre formes découpées."],
+    [23.6, "La séparation des poses donne quatre piles distinctes. Les rabats se voient sur leur contour."],
+    [26, "Au margeur de la plieuse-colleuse, les poses sont empilées à plat, côté intérieur visible."],
+    [28.30, "Les courroies et les galets de la plieuse-colleuse de Bayonne. Photographie de l’atelier."],
+    [29.25, "La colle se dépose sur la patte latérale pendant que les bandes entraînent la pose."],
+    [32, "Les guides rabattent les panneaux. La face imprimée revient à l’extérieur."],
+    [36, "Le joint est pressé. Les étuis collés se suivent à plat en une nappe régulière."],
+    [38, "Les étuis sont rangés à plat dans leur caisse de transport."],
+    [42, "Les caisses fermées quittent le quai sur palette."],
+    [45, "À réception, un étui sort de la caisse. Ses faces s’écartent le long des rainages."],
+    [49.4, "Les rabats ferment l’étui. Sa tranche laisse voir l’épaisseur du carton."]
   ];
   const chapterButtons = Array.from(document.querySelectorAll("[data-sequence]"));
   const station = byId("station");
@@ -64,12 +69,13 @@
   let inspectorRequest = 0;
   let inspectorUnavailable = false;
   let renderer;
+  let rendererPromise;
   let angle = 0;
 
   function compact() { return motion.matches || mediaFailed; }
 
   function framePath(name) {
-    return "assets/film/" + (portrait.matches ? "portrait/" : "") + name + ".webp";
+    return "assets/film/" + (portrait.matches ? "portrait/" : "") + name + ".webp?v=3";
   }
 
   function measure() {
@@ -100,7 +106,7 @@
       clock.textContent = clockValue;
     }
     range.value = String(time);
-    range.setAttribute("aria-valuetext", clockValue + " sur 0:44, " + chapters[index].title);
+    range.setAttribute("aria-valuetext", clockValue + " sur 0:52, " + chapters[index].title);
     range.style.setProperty("--progress", (time / last * 100).toFixed(2) + "%");
     still.hidden = !(compact() && !active && !inspectorOpen);
     if (!still.hidden) {
@@ -110,7 +116,7 @@
         still.src = file;
       }
     }
-    examine.hidden = time < 42 || inspectorOpen || inspectorUnavailable;
+    examine.hidden = time < last - 2 || inspectorOpen || inspectorUnavailable;
     playButton.classList.toggle("playing", active);
     const playLabel = mediaFailed ? "Réessayer de lire le film" : active ? "Mettre le film en pause" :
       time >= last - .1 ? "Revoir le film" : "Lire le film";
@@ -298,10 +304,12 @@
     const request = ++inspectorRequest;
     refresh();
     try {
-      const scene = await import("./scene.js");
+      const scene = await import("./scene.js?v=3");
       if (!inspectorOpen || request !== inspectorRequest) return;
       canvas.hidden = false;
-      if (!renderer) renderer = scene.atelierRenderer(canvas);
+      rendererPromise ||= scene.atelierRenderer(canvas);
+      renderer = await rendererPromise;
+      if (!inspectorOpen || request !== inspectorRequest) return;
       angle = 0;
       spin(0);
       objectControls.hidden = false;
@@ -385,7 +393,7 @@
   motion.addEventListener("change", motionChange);
   function chooseFraming() {
     film.poster = framePath("feuille");
-    const file = portrait.matches ? "fabrication-mobile.mp4" : "fabrication.mp4";
+    const file = portrait.matches ? "fabrication-mobile.mp4?v=3" : "fabrication.mp4?v=3";
     if (loaded && !mediaFailed && film.currentSrc && !film.currentSrc.endsWith("/" + file)) {
       const resume = active;
       pause();

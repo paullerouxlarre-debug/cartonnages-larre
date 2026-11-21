@@ -11,7 +11,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/barlow-condensed-bold.woff2">
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/instrument-serif-italic.woff2">
   <link rel="stylesheet" href="assets/visite.css">
-  <script defer src="js/visite.js"></script>
+  <script defer src="js/visite.js?v=ateliers3"></script>
 </head>
 <body>
   <a class="skip" href="#parcours">Aller au film de fabrication</a>
@@ -35,7 +35,7 @@
           <h1 id="titre"><span>La fabrique</span><em>d’une boîte.</em></h1>
           <p class="cover-intro">Suivez une feuille de carton sous les cylindres, entre les courroies et jusque dans les mains du client.</p>
           <div class="cover-actions">
-            <a class="play-link" href="#parcours" id="lancer"><i class="play-icon" aria-hidden="true"></i> Lancer le film <span class="duration">0:44</span></a>
+            <a class="play-link" href="#parcours" id="lancer"><i class="play-icon" aria-hidden="true"></i> Lancer le film <span class="duration">0:52</span></a>
             <a class="scroll-link" href="#parcours"><i class="scroll-icon" aria-hidden="true"></i> Explorer au défilement</a>
           </div>
         </div>
@@ -45,10 +45,10 @@
         <span class="index-label">Dans l’ordre de fabrication</span>
         <ol aria-label="Accès aux cinq séquences">
           <li><a href="#parcours" data-enter="0">Offset</a></li>
-          <li><a href="#parcours" data-enter="13.3">Découpe</a></li>
-          <li><a href="#parcours" data-enter="22.5">Pliage-collage</a></li>
-          <li><a href="#parcours" data-enter="34.4">Expédition</a></li>
-          <li><a href="#parcours" data-enter="39.4">Chez le client</a></li>
+          <li><a href="#parcours" data-enter="14">Découpe</a></li>
+          <li><a href="#parcours" data-enter="26">Pliage-collage</a></li>
+          <li><a href="#parcours" data-enter="38">Expédition</a></li>
+          <li><a href="#parcours" data-enter="45">Chez le client</a></li>
         </ol>
       </div></div>
     </section>
@@ -56,12 +56,12 @@
     <section class="journey" id="parcours" aria-label="Film interactif de fabrication">
       <div class="screen" id="ecran">
         <div class="film-window">
-          <video id="film" width="1280" height="756" muted playsinline controls preload="none" poster="assets/film/feuille.webp" aria-label="La fabrication d’un étui en carton, film muet de 44 secondes" aria-describedby="resume-film">
-            <source media="(max-width: 720px) and (orientation: portrait)" src="assets/film/fabrication-mobile.mp4" type="video/mp4">
-            <source src="assets/film/fabrication.mp4" type="video/mp4">
-            <p><a href="assets/film/fabrication.mp4">Ouvrir le film de fabrication</a></p>
+          <video id="film" width="1280" height="756" muted playsinline controls preload="none" poster="assets/film/feuille.webp?v=3" aria-label="La fabrication d’un étui en carton, film muet de 52 secondes" aria-describedby="resume-film">
+            <source media="(max-width: 720px) and (orientation: portrait)" src="assets/film/fabrication-mobile.mp4?v=3" type="video/mp4">
+            <source src="assets/film/fabrication.mp4?v=3" type="video/mp4">
+            <p><a href="assets/film/fabrication.mp4?v=3">Ouvrir le film de fabrication</a></p>
           </video>
-          <img class="still" id="photo-plan" src="assets/film/feuille.webp" width="1200" height="708" alt="" hidden>
+          <img class="still" id="photo-plan" src="assets/film/feuille.webp?v=3" width="1200" height="708" alt="" hidden>
           <canvas id="objet-3d" aria-label="Étui monté que vous pouvez faire tourner" hidden></canvas>
         </div>
         <div class="screen-shade" aria-hidden="true"></div>
@@ -70,7 +70,7 @@
           <div class="caption">
             <p class="overline"><span class="station" id="station">01 / 05</span><span id="poste">Impression</span></p>
             <h2 id="plan-titre">La presse offset</h2>
-            <p class="action-text" id="geste">La feuille quitte la pile. Chaque groupe imprimant y dépose une couleur.</p>
+            <p class="action-text" id="geste">Au margeur, les feuilles de carton vierge sont empilées sur une palette.</p>
           </div>
           <div class="film-aside"><span class="edition-key" aria-hidden="true"></span><span>Étui d’étude<br>Vue en coupe</span></div>
         </div>
@@ -78,17 +78,17 @@
           <div class="shell console-inner">
             <div class="transport">
               <button class="transport-play" id="lecture" type="button" aria-label="Lire le film"><i class="play-icon" aria-hidden="true"></i></button>
-              <span class="clock"><span id="temps">0:00</span> <span class="clock-end">/ 0:44</span></span>
-              <input id="curseur" type="range" min="0" max="44" step="0.05" value="0" aria-label="Position dans le film">
+              <span class="clock"><span id="temps">0:00</span> <span class="clock-end">/ 0:52</span></span>
+              <input id="curseur" type="range" min="0" max="52" step="0.05" value="0" aria-label="Position dans le film">
               <button type="button" class="inspect" id="examiner" hidden>Tourner l’étui</button>
               <a class="transcript" href="#lecture-film" aria-label="Lire la version texte"><span>Version </span>texte</a>
             </div>
             <nav class="stations" aria-label="Chapitres du film">
               <button type="button" data-sequence="0" aria-current="step">Offset</button>
-              <button type="button" data-sequence="10.5">Découpe</button>
-              <button type="button" data-sequence="18.5">Pliage<span class="long">-collage</span></button>
-              <button type="button" data-sequence="29.5">Expédition</button>
-              <button type="button" data-sequence="37.5">Client</button>
+              <button type="button" data-sequence="14">Découpe</button>
+              <button type="button" data-sequence="26">Pliage<span class="long">-collage</span></button>
+              <button type="button" data-sequence="38">Expédition</button>
+              <button type="button" data-sequence="45">Client</button>
             </nav>
           </div>
         </div>
@@ -127,13 +127,14 @@
         <details id="lecture-film" class="transcription">
           <summary>Lire le parcours de la boîte</summary>
           <ol>
-            <li><strong>Impression offset.</strong> La feuille quitte la pile. L’encre passe de la plaque au blanchet, puis du blanchet au carton. Le motif apparaît au passage des groupes successifs.</li>
-            <li><strong>Découpe et rainage.</strong> L’autoplatine presse la feuille contre la forme. Les filets coupants détachent le contour, les filets de rainage marquent les futurs plis. La chute se sépare de l’étui.</li>
-            <li><strong>Pliage-collage.</strong> La colle est déposée sur la patte latérale du modèle. Les guides rabattent les pans puis les courroies maintiennent le joint sous pression.</li>
+            <li><strong>Impression offset.</strong> La feuille quitte la pile. Le blanchet transfère l’encre au carton. Chaque feuille porte quatre poses imprimées et rejoint la palette de réception.</li>
+            <li><strong>Découpe et rainage.</strong> La palette imprimée est amenée au margeur de l’autoplatine, qui presse chaque feuille contre la forme. Les filets coupants détachent le contour, les filets de rainage marquent les futurs plis. Les déchets sont éjectés. Les quatre poses séparées s’empilent en lots.</li>
+            <li><strong>Pliage-collage.</strong> Le margeur prend les poses par le dessous de la pile, intérieur visible. Un filet de colle est déposé sur la patte latérale. Les guides rabattent les pans puis les courroies maintiennent le joint sous pression.</li>
             <li><strong>Expédition.</strong> Les étuis collés sont empilés à plat, conditionnés en caisse et chargés pour le transport.</li>
             <li><strong>Chez le client.</strong> Un étui sort de la caisse. Ses faces s’écartent, sa section devient rectangulaire et ses rabats se ferment.</li>
           </ol>
           <p>Le film suit un étui d’étude. Ses décors et la réception chez le client sont des reconstitutions. <a href="https://www.cartonnages-larre.fr/fr/process.html">Découvrir les procédés de l’entreprise</a></p>
+          <p>Pour voir les machines en fonctionnement, retrouvez le départ de la feuille, la séparation des poses et le pliage d’un étui dans les démonstrations des constructeurs. <a href="https://www.komorisolutions.com/video/en/v/002.html">Margeur Komori</a> · <a href="https://www.youtube.com/watch?v=w7dzp3mnSg0&amp;t=84s">Découpe BOBST</a> · <a href="https://www.youtube.com/watch?v=Jwix1kCG9Es&amp;t=35s">Pliage BOBST</a></p>
         </details>
       </div>
     </section>
