@@ -24,7 +24,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/instrument-serif-italic.woff2">
   <link rel="stylesheet" href="assets/visite.css">
   <script defer src="js/visite.js?v=scroll4"></script>
-  <script type="module" src="js/accueil.js?v=2"></script>
+  <script type="module" src="js/accueil.js?v=3"></script>
 </head>
 <body>
   <a class="skip" href="#parcours">Aller au film de fabrication</a>
@@ -44,17 +44,27 @@
         <canvas id="encre-3d" aria-hidden="true"></canvas>
         <img class="encre-repli" src="assets/film/client.webp?v=5" width="1280" height="756" alt="">
         <div class="shell encre-texte">
-          <div class="encre-titre" data-from="0" data-to=".07">
+          <div class="encre-titre" data-from="0" data-to=".05">
             <p class="overline"><span class="ink-chip" aria-hidden="true"></span>Cartonnages industriels · Bayonne</p>
             <h1 id="titre"><span>La fabrique</span><em>d’une boîte.</em></h1>
-            <p class="encre-intro">Quatre encres, une feuille de carton, un étui. Faites défiler pour voir la matière devenir objet.</p>
+            <p class="encre-intro">Une feuille de carton, quatre encres, une forme de découpe, un filet de colle. Faites défiler pour suivre la matière jusqu’à l’étui.</p>
           </div>
-          <div class="encre-teinte" data-from=".08" data-to=".165" style="--teinte:#0094c9"><span class="nuance" aria-hidden="true"></span><b>Cyan</b><small>Première encre · 1/4</small></div>
-          <div class="encre-teinte" data-from=".18" data-to=".265" style="--teinte:#d3166f"><span class="nuance" aria-hidden="true"></span><b>Magenta</b><small>Deuxième encre · 2/4</small></div>
-          <div class="encre-teinte" data-from=".28" data-to=".365" style="--teinte:#f6c400"><span class="nuance" aria-hidden="true"></span><b>Jaune</b><small>Troisième encre · 3/4</small></div>
-          <div class="encre-teinte" data-from=".38" data-to=".47" style="--teinte:#16191a"><span class="nuance" aria-hidden="true"></span><b>Noir</b><small>Le décor est complet · 4/4</small></div>
-          <div class="encre-etape" data-from=".52" data-to=".7"><b>Plié, collé.</b><small>Les rainages guident chaque pli.</small></div>
-          <div class="encre-etape fin" data-from=".84" data-to="1.01"><b>Une boîte <em>Larré.</em></b><span class="encre-suite" id="lancer"><i class="scroll-icon" aria-hidden="true"></i> Continuez : l’atelier commence</span></div>
+          <ol class="encre-rail" aria-label="Étapes de fabrication">
+            <li data-actif=".045,.44"><span>01</span>Impression</li>
+            <li data-actif=".44,.61"><span>02</span>Découpe</li>
+            <li data-actif=".61,.86"><span>03</span>Pliage-collage</li>
+            <li data-actif=".86,1.01"><span>04</span>L’étui</li>
+          </ol>
+          <aside class="encre-fiche" data-from=".05" data-to=".415"><span class="fiche-num">01 · Presse offset</span><b>L’impression</b><p>Cyan, magenta, jaune et noir se superposent sur la feuille pour composer toutes les teintes du décor. Chez Larré, l’offset imprime jusqu’à six couleurs, avec un vernis possible.</p><small>Une feuille · quatre poses · quatre encres</small></aside>
+          <aside class="encre-fiche" data-from=".44" data-to=".59"><span class="fiche-num">02 · Autoplatine</span><b>La découpe</b><p>Une forme presse la feuille. Les filets coupants détachent les quatre poses, les filets de rainage marquent les futurs plis, et les déchets tombent.</p><small class="legende"><i class="l-coupe" aria-hidden="true"></i>Coupe <i class="l-rainage" aria-hidden="true"></i>Rainage</small></aside>
+          <aside class="encre-fiche" data-from=".615" data-to=".8"><span class="fiche-num">03 · Plieuse-colleuse</span><b>Le pliage-collage</b><p>Un filet de colle est déposé sur la patte latérale. Les pans se rabattent et le joint est pressé. L’étui repart à plat, il prendra son volume chez le client.</p><small>Patte latérale · joint pressé</small></aside>
+          <div class="encre-teinte" data-from=".055" data-to=".113" style="--teinte:#0094c9"><span class="nuance" aria-hidden="true"></span><b>Cyan</b><small>Première encre · 1/4</small></div>
+          <div class="encre-teinte" data-from=".137" data-to=".183" style="--teinte:#d3166f"><span class="nuance" aria-hidden="true"></span><b>Magenta</b><small>Deuxième encre · 2/4</small></div>
+          <div class="encre-teinte" data-from=".207" data-to=".253" style="--teinte:#f6c400"><span class="nuance" aria-hidden="true"></span><b>Jaune</b><small>Troisième encre · 3/4</small></div>
+          <div class="encre-teinte" data-from=".277" data-to=".41" style="--teinte:#16191a"><span class="nuance" aria-hidden="true"></span><b>Noir</b><small>Le décor est complet · 4/4</small></div>
+          <div class="encre-etape" data-from=".45" data-to=".59"><b>Découpé.</b><small>Quatre poses sortent de la feuille.</small></div>
+          <div class="encre-etape" data-from=".62" data-to=".78"><b>Plié, collé.</b><small>Les rainages guident chaque pli.</small></div>
+          <div class="encre-etape fin" data-from=".86" data-to="1.01"><b>Une boîte <em>Larré.</em></b><span class="encre-suite" id="lancer"><i class="scroll-icon" aria-hidden="true"></i> Continuez : l’atelier en vrai</span></div>
         </div>
         <p class="encre-avance" aria-hidden="true"><i class="scroll-icon"></i> Faites défiler</p>
       </div>

@@ -4,7 +4,7 @@ Une visite interactive de 52 secondes suit un étui depuis la palette de feuille
 
 ## Visiter l’atelier
 
-Le site se parcourt entièrement au défilement, sans bouton. À l’ouverture, une scène 3D (`js/encre3d.js`, pilotée par `js/accueil.js`) verse le cyan, le magenta, le jaune puis le noir sur une découpe vierge : l’impression apparaît là où l’encre tombe, puis la découpe se plie en étui. Le film de l’atelier avance ensuite image par image, puis l’album glisse horizontalement. Au clavier, les flèches déplacent le curseur d’une seconde et la touche Fin rejoint la boîte montée. « Tourner l’étui » ouvre alors le modèle 3D.
+Le site se parcourt entièrement au défilement, sans bouton. À l’ouverture, une scène 3D (`js/encre3d.js`, pilotée par `js/accueil.js`) raconte le procédé de façon abstraite. Le cyan, le magenta, le jaune puis le noir tombent sur une feuille d’impression vierge à quatre poses et l’impriment là où ils s’étalent. Les filets de coupe et de rainage se tracent, la forme presse, les déchets tombent au sol. Une pose reçoit un filet de colle sur sa patte, se plie, prend son volume et tourne parmi d’autres étuis. Une fiche par étape explique l’impression, la découpe et le pliage-collage. Le film de l’atelier avance ensuite image par image, puis l’album glisse horizontalement. Au clavier, les flèches déplacent le curseur d’une seconde et la touche Fin rejoint la boîte montée. « Tourner l’étui » ouvre alors le modèle 3D.
 
 Les cadrages large et portrait disposent chacun de leur propre film. Avec la préférence de mouvement réduit, le visiteur découvre les plans fixes de chaque chapitre, sans encre animée. La version texte décrit les opérations dans leur ordre de fabrication.
 

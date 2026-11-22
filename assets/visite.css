@@ -321,7 +321,7 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 .masthead-inner::after { background: rgb(27 43 41 / 18%); }
 .masthead .nav-contact { border-color: rgb(27 43 41 / 55%); color: #1b2b29; }
 .masthead .nav-contact:hover { background: #1b2b29; color: var(--paper); }
-.encre { position: relative; height: 560vh; background: #ddd3c2; color: #1b2b29; }
+.encre { position: relative; height: 760vh; background: #ddd3c2; color: #1b2b29; }
 .encre-scene { position: sticky; top: 0; height: 100svh; overflow: hidden; }
 #encre-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .encre-repli { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
@@ -345,13 +345,37 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 .encre-avance { position: absolute; bottom: 1.2rem; left: 50%; transform: translateX(-50%); margin: 0; font: .78rem var(--mono); letter-spacing: .12em; text-transform: uppercase; color: #3a4b47; display: flex; gap: .6rem; align-items: center; opacity: calc(1 - var(--p, 0) * 12); }
 .encre-fixe .encre { height: auto; }
 .encre-fixe .encre-scene { position: relative; min-height: 100svh; }
-.encre-fixe .encre-teinte, .encre-fixe .encre-etape:not(.fin), .encre-fixe .encre-avance { display: none; }
+.encre-fixe .encre-teinte, .encre-fixe .encre-etape:not(.fin), .encre-fixe .encre-avance, .encre-fixe .encre-fiche, .encre-fixe .encre-rail { display: none; }
 .encre-fixe .encre-titre { opacity: 1 !important; visibility: visible !important; }
 .encre-fixe .encre-etape.fin { opacity: 1 !important; visibility: visible !important; }
+/* Fiches d'étape et repère de progression de l'ouverture. */
+.encre-texte > .encre-fiche { left: auto; right: var(--gutter); top: clamp(6.5rem, 17vh, 10rem); width: min(23rem, 30vw); padding: 1.3rem 1.4rem 1.2rem; background: rgb(255 253 248 / 62%); backdrop-filter: blur(16px) saturate(1.2); -webkit-backdrop-filter: blur(16px) saturate(1.2); border-top: 3px solid #c64a25; box-shadow: 0 24px 60px rgb(30 30 20 / 10%); }
+.encre-fiche .fiche-num { display: block; font: .74rem var(--mono); letter-spacing: .12em; text-transform: uppercase; color: #c64a25; }
+.encre-fiche b { display: block; margin: .5rem 0 .6rem; font: 700 clamp(1.7rem, 2.6vw, 2.4rem)/.95 var(--display); text-transform: uppercase; letter-spacing: -.02em; color: #1b2b29; }
+.encre-fiche p { margin: 0 0 .9rem; font-size: .96rem; line-height: 1.5; color: #2f403c; }
+.encre-fiche small { display: flex; gap: .5rem; align-items: center; font: .72rem var(--mono); letter-spacing: .1em; text-transform: uppercase; color: #52625e; }
+.legende i { display: inline-block; width: 1.6rem; height: 3px; margin-left: .3rem; }
+.legende i:first-child { margin-left: 0; }
+.l-coupe { background: #ff6a2c; }
+.l-rainage { background: repeating-linear-gradient(90deg, #fff 0 5px, transparent 5px 8px); box-shadow: 0 0 0 1px rgb(0 0 0 / 12%); }
+.encre-texte > .encre-rail { top: clamp(5.6rem, 13vh, 7.5rem); right: auto; margin: 0; padding: 0; list-style: none; display: flex; gap: 1.4rem; font: .72rem var(--mono); letter-spacing: .1em; text-transform: uppercase; color: rgb(27 43 41 / 45%); opacity: calc(min(1, (var(--p, 0) - .035) * 40)); }
+.encre-rail li { position: relative; padding-bottom: .5rem; transition: color .35s; }
+.encre-rail li span { margin-right: .45rem; }
+.encre-rail li::after { content: ""; position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform .45s; }
+.encre-rail li.actif { color: #1b2b29; }
+.encre-rail li.actif::after { transform: scaleX(1); background: #c64a25; }
 @media (max-width: 720px) {
-  .encre { height: 480vh; }
+  .encre { height: 640vh; }
   .encre-titre { top: 6.2rem; }
   .encre-teinte, .encre-etape { bottom: 2.6rem; }
+  .encre-texte > .encre-rail { top: 5.2rem; gap: .8rem; font-size: .62rem; }
+  .encre-rail li:not(.actif) { font-size: 0; }
+  .encre-rail li:not(.actif) span { font-size: .62rem; margin: 0; }
+  .encre-texte > .encre-fiche { left: var(--gutter); right: var(--gutter); top: 7.4rem; width: auto; padding: .9rem 1rem .8rem; }
+  .encre-fiche b { font-size: 1.45rem; margin: .3rem 0 .4rem; }
+  .encre-fiche p { font-size: .86rem; margin-bottom: .5rem; }
+  .encre-fiche small { display: none; }
+  .encre-teinte b, .encre-etape b { font-size: clamp(2.8rem, 15vw, 4rem); }
 }
 
 /* 100 % défilement : aucune commande dans le film, galerie qui glisse au scroll. */

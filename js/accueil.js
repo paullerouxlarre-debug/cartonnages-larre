@@ -4,6 +4,7 @@ const motion = matchMedia("(prefers-reduced-motion: reduce)");
 const section = document.getElementById("encre");
 const canvas = document.getElementById("encre-3d");
 const labels = [...section.querySelectorAll("[data-from]")].map(el => ({el, from: +el.dataset.from, to: +el.dataset.to}));
+const steps = [...section.querySelectorAll("[data-actif]")].map(el => { const [from, to] = el.dataset.actif.split(",").map(Number); return {el, from, to}; });
 const statements = [...document.querySelectorAll(".statements p")].map(el => ({el, from: +el.dataset.from, to: +el.dataset.to}));
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const smooth = (a, b, v) => { const u = clamp((v - a) / (b - a)); return u * u * (3 - 2 * u); };
@@ -28,6 +29,7 @@ function render(now) {
   frame = 0;
   measure();
   fade(labels, progress, .018);
+  for (const s of steps) s.el.classList.toggle("actif", progress >= s.from && progress < s.to);
   section.style.setProperty("--p", progress.toFixed(4));
   if (scene && visible) scene.draw(progress, now / 1000);
   // Keep the floating boxes alive while the closing shot is on screen.
@@ -43,7 +45,7 @@ async function start() {
   }
   if (!scene && !failed) {
     try {
-      const {inkScene} = await import("./encre3d.js?v=1");
+      const {inkScene} = await import("./encre3d.js?v=2");
       scene = await inkScene(canvas);
       document.documentElement.classList.add("encre-prete");
     } catch (error) {
