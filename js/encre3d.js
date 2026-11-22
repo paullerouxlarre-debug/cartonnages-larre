@@ -7,7 +7,6 @@ import * as T from '../assets/vendor/three.module.min.js';
 import {RGBELoader} from '../assets/vendor/RGBELoader.js';
 import {makeCarton, makeStrippedSheet, imposePositions, blankOutline, stock} from './etui.js';
 import {materials, zCenter} from './papier.js';
-import {glueRun} from './colle.js';
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const ease = (a, b, x) => { const u = clamp((x - a) / (b - a)); return u * u * (3 - 2 * u); };
@@ -18,12 +17,13 @@ const rand = s => { const x = Math.sin(s * 127.1 + 311.7) * 43758.5453; return x
 const SHEET_Y = .26;
 // The pose that becomes the box sits at the world origin.
 const HERO = 2;
+const TURN = 2.25;
 // Pour timing (p), impact point on the sheet (world x, z) and ink colour.
 export const pours = [
-  {name: 'cyan', color: 0x0094c9, start: .055, at: [-.06, .10]},
-  {name: 'magenta', color: 0xd3166f, start: .125, at: [.30, -.32]},
-  {name: 'jaune', color: 0xf6c400, start: .195, at: [-.36, -.42]},
-  {name: 'noir', color: 0x16191a, start: .265, at: [.24, .12]}
+  {name: 'cyan', color: 0x0094c9, start: .055, at: [-.13, .19]},
+  {name: 'magenta', color: 0xd3166f, start: .125, at: [-.38, .52]},
+  {name: 'jaune', color: 0xf6c400, start: .195, at: [-.02, .54]},
+  {name: 'noir', color: 0x16191a, start: .265, at: [-.33, -.06]}
 ];
 const FALL = .045, SPREAD = .135;
 // Découpe and stripping, then the folding of the hero pose.
@@ -166,7 +166,10 @@ export async function inkScene(canvas) {
   inked(hero.pivot);
   let glueBead = null;
   hero.pivot.traverse(o => { if (o.isMesh && o.material?.color?.getHex?.() === 0xf0e9cd) glueBead = o; });
-  if (glueBead) { glueBead.scale.set(1, 1.1, 2.4); glueBead.material = glueBead.material.clone(); glueBead.material.color.set(0xf7f1dc); }
+  // The bead is laid on the glue tab while the pose is still flat, then follows the tab.
+  const tabRun = length - .04, bead = new T.Mesh(new T.CapsuleGeometry(.5, 1, 6, 16), new T.MeshPhysicalMaterial({color: 0xe9a93a, roughness: .12, clearcoat: 1, clearcoatRoughness: .05}));
+  bead.rotation.z = Math.PI / 2; bead.castShadow = true;
+  glueBead?.parent.add(bead);
   const flock = Array.from({length: 7}, (_, i) => {
     const c = makeCarton(scene);
     c.pivot.traverse(o => { if (o.isMesh) o.castShadow = true; });
@@ -192,7 +195,7 @@ export async function inkScene(canvas) {
     return {p, col, drops, pool};
   });
   // Glue: a thin pale thread from a nozzle onto the side tab.
-  const glueMat = new T.MeshPhysicalMaterial({color: 0xf7f1dc, roughness: .12, clearcoat: 1, clearcoatRoughness: .05});
+  const glueMat = new T.MeshPhysicalMaterial({color: 0xe9a93a, roughness: .12, clearcoat: 1, clearcoatRoughness: .05});
   const glueThread = stream(scene, glueMat);
   const nozzle = new T.Mesh(new T.ConeGeometry(.012, .05, 24), new T.MeshPhysicalMaterial({color: 0x2a3432, metalness: .85, roughness: .25}));
   nozzle.rotation.x = Math.PI; scene.add(nozzle);
@@ -231,7 +234,7 @@ export async function inkScene(canvas) {
       drops.forEach(({d, a, v, up, s: size}) => {
         d.visible = s > 0 && s < 1;
         if (!d.visible) return;
-        const r = v * s * .22, dy = up * .22 * (s - s * s * 1.15);
+        const r = v * s * .15, dy = up * .22 * (s - s * s * 1.15);
         d.position.set(x + Math.cos(a) * r, Math.max(y + .003, y + dy), z + Math.sin(a) * r);
         const k = size * 1.6 * (1 - s * .6);
         d.scale.set(k, k * (1 + (1 - s) * 1.2), k);
@@ -271,20 +274,27 @@ export async function inkScene(canvas) {
     sheet.poses[HERO].visible = !heroIsBox;
 
     // 3. Pliage-collage, then 4. erect, close and turn.
-    const fold = ease(.615, .675, p), glue = ease(.665, .72, p), back = ease(.715, .77, p);
-    const stand = ease(.77, .84, p), open = ease(.79, .86, p);
-    const shutB = ease(.84, .89, p), shutT = ease(.87, .93, p);
+    const glue = ease(.625, .675, p), fold = ease(.68, .73, p), back = ease(.725, .775, p);
+    const stand = ease(.78, .85, p), open = ease(.80, .87, p);
+    const shutB = ease(.85, .9, p), shutT = ease(.88, .94, p);
     const spin = ease(.78, 1, p) * Math.PI * 1.6 + Math.sin(clock * .5) * .03;
-    const lift = ease(.77, .86, p) * .1;
+    const lift = ease(.78, .87, p) * .1;
+    // Turn the flat pose so the glue tab and the folds face the camera.
+    const turn = TURN * ease(.6, .64, p) * (1 - ease(.76, .84, p));
     hero.pivot.visible = heroIsBox;
-    hero.pose({x: 0, y: SHEET_Y + lift, z: 0, rise: stand * Math.PI / 2, yaw: spin,
-      foldLeft: fold, foldBack: back, glue, open, closeBottom: shutB, closeTop: shutT});
+    hero.pose({x: 0, y: SHEET_Y + lift, z: 0, rise: stand * Math.PI / 2, yaw: spin + turn,
+      foldLeft: fold, foldBack: back, glue: 0, open, closeBottom: shutB, closeTop: shutT});
     // The glue thread follows the head of the bead along the tab.
-    const gluing = heroIsBox && glue > .002 && glue < .995 && glueBead;
+    const run = tabRun * glue, x0 = -tabRun / 2;
+    // The tab is folded onto its joint: the bead is then held inside, out of sight.
+    bead.visible = heroIsBox && glue > .002 && fold < .9;
+    bead.position.set(x0 + run / 2, -stock.thickness - .0022, -stock.tab * .5);
+    bead.scale.set(.007, Math.max(.0001, run / 2), .007);
+    const gluing = bead.visible && glue < .995;
     glueThread.mesh.visible = nozzle.visible = false;
     if (gluing) {
       hero.pivot.updateMatrixWorld(true);
-      const head = glueBead.localToWorld(tmp.set(glueRun / 2 - glueRun * glue, 0, 0));
+      const head = bead.parent.localToWorld(tmp.set(x0 + run, -stock.thickness - .0014, -stock.tab * .5));
       glueThread.update(head.y + .22, head.y + .001, head.x, head.z, .0032, p * 60);
       nozzle.position.set(head.x, head.y + .245, head.z); nozzle.visible = true;
     }
@@ -311,8 +321,11 @@ export async function inkScene(canvas) {
     target.lerpVectors(sheetCentre, boxCentre, onBox);
     hero.pivot.updateMatrixWorld(true);
     target.lerp(hero.pivot.localToWorld(tmp.copy(erected)), ease(.76, .86, p));
+    // Close in on the glue tab while the bead is laid.
+    const close = ease(.6, .63, p) * (1 - ease(.675, .705, p));
+    if (close > 0 && glueBead) target.lerp(glueBead.parent.localToWorld(tmp.set(0, 0, -stock.tab * .5)), close * .6);
     const orbit = mix(-.35, .2, ease(0, .5, p)) + ease(.6, 1, p) * .7;
-    const dist = (mix(1.75, 1.5, ease(.04, .3, p)) * (1 - onBox) + mix(.98, 1.05, ease(.77, .9, p)) * onBox + ease(.9, 1, p) * .3) * (portrait ? 1.55 : 1);
+    const dist = (mix(1.75, 1.5, ease(.04, .3, p)) * (1 - onBox) + mix(.98, 1.05, ease(.77, .9, p)) * onBox + ease(.9, 1, p) * .3) * (1 - .2 * close) * (portrait ? 1.55 : 1);
     const elev = mix(1.05, .62, ease(.02, .3, p)) * (1 - onBox) + mix(.8, .32, ease(.74, .9, p)) * onBox;
     camera.position.set(target.x + Math.sin(orbit) * dist * Math.cos(elev), target.y + Math.sin(elev) * dist, target.z + Math.cos(orbit) * dist * Math.cos(elev));
     camera.lookAt(target);

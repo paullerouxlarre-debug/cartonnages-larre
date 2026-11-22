@@ -201,11 +201,14 @@ function textureLibrary() {
   // A colour-control strip and registration targets remain outside the cut forms.
   ctx.save();ctx.scale(px,py);
   const inks=['#198ca2','#ba4777','#d2b449','#34372f','#b77760','#789081','#b5a482'];
+  // The control strip runs along the long edges, in the narrow margin beyond the poses.
+  for(const by of [.0012,pressFormat.x-.0072]) {
+    for(let i=0;i<96;i++) {
+      ctx.fillStyle=inks[i%inks.length];ctx.fillRect(.03+i*.0100,by,.0093,.006);
+    }
+  }
   for(const side of [-1,1]) {
     const bx=side<0?.016:pressFormat.z-.03;
-    for(let i=0;i<42;i++) {
-      ctx.fillStyle=inks[i%inks.length];ctx.fillRect(bx,.025+i*.010,.009,.0093);
-    }
     for(const by of [.024,.372,.722]) {
       const x=bx+(side<0?.017:-.010);
       ctx.strokeStyle='#333d39';ctx.lineWidth=.00037;

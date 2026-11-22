@@ -45,7 +45,7 @@ async function start() {
   }
   if (!scene && !failed) {
     try {
-      const {inkScene} = await import("./encre3d.js?v=2");
+      const {inkScene} = await import("./encre3d.js?v=3");
       scene = await inkScene(canvas);
       document.documentElement.classList.add("encre-prete");
     } catch (error) {
