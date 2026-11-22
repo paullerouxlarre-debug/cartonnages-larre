@@ -23,8 +23,8 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/barlow-condensed-bold.woff2">
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/instrument-serif-italic.woff2">
   <link rel="stylesheet" href="assets/visite.css">
-  <script defer src="js/visite.js?v=defilement1"></script>
-  <script type="module" src="js/encres.js?v=1"></script>
+  <script defer src="js/visite.js?v=defilement2"></script>
+  <script type="module" src="js/encres.js?v=2"></script>
 </head>
 <body>
   <canvas id="encres" aria-hidden="true"></canvas>
@@ -49,8 +49,8 @@
           <h1 id="titre"><span>La fabrique</span><em>d’une boîte.</em></h1>
           <p class="cover-intro">Suivez une feuille de carton sous les cylindres, entre les courroies et jusque dans les mains du client.</p>
           <div class="cover-actions">
-            <a class="play-link" href="#parcours" id="lancer"><i class="play-icon" aria-hidden="true"></i> Lancer le film <span class="duration">0:52</span></a>
-            <a class="scroll-link" href="#parcours"><i class="scroll-icon" aria-hidden="true"></i> Explorer au défilement</a>
+            <a class="play-link" href="#parcours" id="lancer"><i class="scroll-icon" aria-hidden="true"></i> Descendre dans l’atelier</a>
+            <span class="scroll-link" aria-hidden="true">Le film avance au défilement</span>
           </div>
         </div>
         <p class="photo-credit"><span class="crop" aria-hidden="true"></span>À l’image <b>La plieuse-colleuse de l’atelier</b></p>
@@ -70,7 +70,7 @@
     <section class="journey" id="parcours" aria-label="Film interactif de fabrication">
       <div class="screen" id="ecran">
         <div class="film-window">
-          <video id="film" width="1280" height="756" muted playsinline controls preload="none" poster="assets/film/feuille.webp?v=5" aria-label="La fabrication d’un étui en carton, film muet de 52 secondes" aria-describedby="resume-film">
+          <video id="film" width="1280" height="756" muted playsinline preload="none" poster="assets/film/feuille.webp?v=5" aria-label="La fabrication d’un étui en carton, film muet de 52 secondes" aria-describedby="resume-film">
             <source media="(max-width: 720px) and (orientation: portrait)" src="assets/film/fabrication-mobile.mp4?v=5" type="video/mp4">
             <source src="assets/film/fabrication.mp4?v=5" type="video/mp4">
             <p><a href="assets/film/fabrication.mp4?v=5">Ouvrir le film de fabrication</a></p>
@@ -100,7 +100,7 @@
         <div class="console film-controls" role="group" aria-label="Commandes du film">
           <div class="shell console-inner">
             <div class="transport">
-              <button class="transport-play" id="lecture" type="button" aria-label="Lire le film"><i class="play-icon" aria-hidden="true"></i></button>
+              <button class="transport-play" id="lecture" type="button" hidden></button>
               <span class="clock"><span id="temps">0:00</span> <span class="clock-end">/ 0:52</span></span>
               <input id="curseur" type="range" min="0" max="52" step="0.05" value="0" aria-label="Position dans le film">
               <button type="button" class="inspect" id="examiner" hidden>Tourner l’étui</button>

@@ -238,6 +238,7 @@
   }
 
   function play() {
+    return; // Le film avance uniquement au défilement.
     if (active) return;
     if (mediaFailed) {
       mediaFailed = false;
@@ -395,7 +396,7 @@
   examine.addEventListener("click", openInspector);
 
   playButton.addEventListener("click", togglePlayback);
-  byId("lancer").addEventListener("click", event => enter(event, 0, true));
+  byId("lancer").addEventListener("click", event => enter(event, 0, false));
   document.querySelectorAll("[data-enter]").forEach(link => {
     link.addEventListener("click", event => enter(event, Number(link.dataset.enter), false));
   });

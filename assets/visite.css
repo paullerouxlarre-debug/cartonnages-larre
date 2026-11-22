@@ -314,3 +314,4 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 @keyframes devoile { from { clip-path: inset(0 0 100% 0); transform: scale(1.2); } to { clip-path: inset(0); transform: none; } }
 @keyframes tache { from { transform: scale(.2) rotate(-20deg); opacity: 0; } to { transform: none; opacity: .5; } }
 @keyframes coule { from { transform: translateY(-.35em) skewY(-4deg); filter: blur(6px); opacity: 0; } to { transform: none; filter: none; opacity: 1; } }
+.transport-play[hidden] { display: none; }

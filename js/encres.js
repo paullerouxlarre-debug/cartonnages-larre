@@ -1,145 +1,16 @@
-// Ink and paper layer. Every shape is a pure function of the scroll position or of the film
-// time, so scrolling back restores exactly the same picture. Disabled for reduced motion.
+// Liquid ink: a small stable-fluids simulation (WebGL 2). Coloured dye is injected by the
+// page — on arrival, while scrolling, at each printing unit and between stations — and runs
+// down under its own weight. Glossy shading comes from the dye's gradient. Off for reduced motion.
 const canvas = document.getElementById("encres");
 const motion = matchMedia("(prefers-reduced-motion: reduce)");
-const ctx = canvas.getContext("2d");
 const cover = document.querySelector(".cover");
 const journey = document.getElementById("parcours");
+const contact = document.getElementById("contact");
 const statements = [...document.querySelectorAll(".statements p")].map(el => ({el, from: +el.dataset.from, to: +el.dataset.to}));
 
-const INK = {c: "#0a95c4", m: "#d42a7b", y: "#f3c21b", k: "#1d2624", o: "#ff784e"};
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const ease = v => { v = clamp(v); return v * v * (3 - 2 * v); };
 const span = (a, b, v) => ease((v - a) / (b - a));
-const rand = seed => { const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
-
-let W = 0, H = 0, ratio = 1, filmTime = 0, intro = 0, introStart = performance.now(), frame = 0;
-
-function resize() {
-  ratio = Math.min(devicePixelRatio || 1, 1.5);
-  W = innerWidth; H = innerHeight;
-  canvas.width = Math.round(W * ratio); canvas.height = Math.round(H * ratio);
-  schedule();
-}
-
-// A drop of ink: rounded head, tapered drip above it and a glossy highlight.
-function drop(x, y, r, color, drip = 0, alpha = 1) {
-  if (r <= .3 || alpha <= .01) return;
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  if (drip > 0) {
-    ctx.moveTo(x - r * .42, y - drip);
-    ctx.quadraticCurveTo(x - r * .5, y - r * .4, x - r, y);
-    ctx.arc(x, y, r, Math.PI, 0, true);
-    ctx.quadraticCurveTo(x + r * .5, y - r * .4, x + r * .42, y - drip);
-    ctx.arc(x, y - drip, r * .42, 0, Math.PI, true);
-  } else ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = alpha * .55;
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.ellipse(x - r * .35, y - r * .3, r * .22, r * .13, -.6, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
-}
-
-// Opening: drops fall onto the cover, then run downwards and stretch as the page scrolls.
-function coverInk(progress) {
-  if (progress >= 1) return;
-  const narrow = W < 720, colours = [INK.c, INK.m, INK.y, INK.k, INK.o];
-  const count = narrow ? 14 : 26;
-  for (let i = 0; i < count; i++) {
-    const side = narrow ? .64 + rand(i) * .34 : .52 + rand(i) * .46;
-    const x = side * W;
-    const rest = (narrow ? .06 + rand(i + 9) * .2 : .1 + rand(i + 9) * .55) * H;
-    const r = (narrow ? 4 : 6) + rand(i + 3) * (narrow ? 8 : 16);
-    const fall = ease((intro - rand(i + 5) * .55) / .45);
-    const y0 = -40 - rand(i + 7) * H * .3;
-    const run = progress * H * (.6 + rand(i + 11) * 1.1);
-    const y = y0 + (rest - y0) * fall + run;
-    const drip = (fall >= 1 ? 1 : 0) * (r * .8 + progress * H * (.25 + rand(i + 13) * .5));
-    drop(x, y, r * (1 - progress * .35), colours[i % 5], drip, .92 * (1 - progress * .6));
-  }
-}
-
-// Offset: one ribbon of each process colour runs along the top edge when the sheet meets
-// its printing unit, and leaves drips that keep running.
-const ribbons = [[INK.c, 5.75], [INK.m, 6.55], [INK.y, 7.35], [INK.k, 8.15]];
-function printingInk(t) {
-  if (t < 5.5 || t > 12.5) return;
-  const fade = 1 - span(10.6, 12.4, t);
-  ribbons.forEach(([color, start], i) => {
-    const head = span(start, start + 1.1, t);
-    if (head <= 0) return;
-    const y = 6 + i * 9, thick = W < 720 ? 6 : 8;
-    ctx.globalAlpha = .88 * fade;
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    for (let x = 0; x <= head * W; x += 12) ctx.lineTo(x, y + Math.sin(x / 70 + i) * 2.4);
-    for (let x = head * W; x >= 0; x -= 12) ctx.lineTo(x, y + thick + Math.sin(x / 55 + i * 2) * 2.4);
-    ctx.fill();
-    for (let d = 0; d < 4; d++) {
-      const x = (rand(i * 10 + d) * .94 + .03) * W;
-      if (x > head * W) continue;
-      const age = t - start - (x / W) * 1.1;
-      const length = Math.min(H * .16, clamp(age, 0, 3) * (25 + rand(d + i) * 45));
-      drop(x, y + thick + length, 3.5 + rand(d * 3 + i) * 4, color, length, .9 * fade);
-    }
-  });
-  ctx.globalAlpha = 1;
-}
-
-// Between stations, printed sheets fly across the frame toward the next machine.
-const flights = [13.7, 25.7, 37.7, 44.8];
-function sheet(x, y, w, h, angle, tilt, seed, alpha) {
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.translate(x, y); ctx.rotate(angle); ctx.scale(1, Math.max(.08, Math.abs(Math.cos(tilt))));
-  ctx.shadowColor = "rgba(0,0,0,.28)"; ctx.shadowBlur = 18; ctx.shadowOffsetY = 10;
-  ctx.fillStyle = "#f4efe5"; ctx.fillRect(-w / 2, -h / 2, w, h);
-  ctx.shadowColor = "transparent";
-  // Four poses, like the sheet in the film: green panel, red wave, kraft stripe.
-  for (let j = 0; j < 4; j++) {
-    const px = -w / 2 + w * .06 + (j % 2) * w * .47, py = -h / 2 + h * .07 + Math.floor(j / 2) * h * .45;
-    const pw = w * .41, ph = h * .38;
-    ctx.fillStyle = "#1f3b35"; ctx.fillRect(px, py, pw * .28, ph);
-    ctx.fillStyle = "#c9542f"; ctx.beginPath(); ctx.moveTo(px + pw * .28, py + ph);
-    ctx.quadraticCurveTo(px + pw * .6, py + ph * (.25 + rand(seed + j) * .3), px + pw, py + ph * .55);
-    ctx.lineTo(px + pw, py + ph); ctx.fill();
-    ctx.fillStyle = "#d9c2a0"; ctx.fillRect(px + pw * .28, py, pw * .72, ph * .16);
-  }
-  ctx.restore();
-}
-function flyingSheets(t) {
-  for (const [k, start] of flights.entries()) {
-    const u = (t - start) / 2.1;
-    if (u < 0 || u > 1) continue;
-    const n = W < 720 ? 5 : 8;
-    for (let i = 0; i < n; i++) {
-      const delay = rand(i + k * 7) * .35, v = clamp((u - delay) / .65);
-      if (v <= 0 || v >= 1) continue;
-      const w = (W < 720 ? 120 : 210) * (.7 + rand(i + 2) * .6), h = w * .72;
-      const x = -w + v * (W + 2 * w) + Math.sin(v * 3 + i) * 30;
-      const y = H * (.15 + rand(i + 4) * .7) - Math.sin(v * Math.PI) * H * (.12 + rand(i + 8) * .2);
-      sheet(x, y, w, h, -.5 + v * (1.3 + rand(i) * 2), v * Math.PI * (1 + rand(i + 3) * 2), i, Math.sin(v * Math.PI) * .95);
-    }
-  }
-}
-
-// Gluing: a thread of glue hangs from the top and breaks when the patch is done.
-function glue(t) {
-  if (t < 29 || t > 33) return;
-  const x = W * (W < 720 ? .82 : .9), grow = span(29.1, 30.6, t), cut = span(31.6, 32.2, t);
-  ctx.globalAlpha = .75 * (1 - span(32.4, 33, t));
-  ctx.fillStyle = "#f6edc9";
-  const top = cut * H * .55, bottom = grow * H * .62 + cut * H * .3;
-  ctx.fillRect(x - 2.5, top, 5, Math.max(0, bottom - top));
-  drop(x, bottom, 7, "#f6edc9", 0, ctx.globalAlpha);
-  ctx.globalAlpha = 1;
-}
-
 function statementsAt(t) {
   for (const s of statements) {
     const v = span(s.from, s.from + .55, t) * (1 - span(s.to - .55, s.to, t));
@@ -148,30 +19,220 @@ function statementsAt(t) {
   }
 }
 
-function draw() {
-  frame = 0;
-  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  ctx.clearRect(0, 0, W, H);
-  intro = clamp((performance.now() - introStart) / 2600);
-  const coverBox = cover.getBoundingClientRect();
-  const coverProgress = clamp(-coverBox.top / Math.max(1, coverBox.height));
-  if (coverBox.bottom > 0) coverInk(coverProgress);
-  const filmBox = journey.getBoundingClientRect();
-  if (filmBox.top < H && filmBox.bottom > 0) {
-    printingInk(filmTime); flyingSheets(filmTime); glue(filmTime);
-  }
-  if (intro < 1) schedule();
-}
-function schedule() { if (!frame) frame = requestAnimationFrame(draw); }
+// Process inks, in linear colour. Black would vanish on the dark film; the brand orange replaces it.
+const INK = {c: [0, .42, .78], m: [.86, .03, .36], y: [1, .74, .02], o: [1, .36, .16], p: [.95, .92, .86]};
 
-function start() {
-  if (motion.matches) { canvas.hidden = true; statements.forEach(s => { s.el.style.opacity = ""; s.el.style.transform = ""; }); return; }
-  canvas.hidden = false;
-  introStart = performance.now();
-  resize();
+const gl = canvas.getContext("webgl2", {alpha: true, premultipliedAlpha: true, antialias: false, depth: false, stencil: false});
+const renderable = gl && (gl.getExtension("EXT_color_buffer_float") || gl.getExtension("EXT_color_buffer_half_float"));
+if (!renderable) {
+  canvas.hidden = true;
+  document.addEventListener("larre:temps", e => { if (!motion.matches) statementsAt(e.detail.time); });
+} else {
+  const narrow = () => innerWidth < 720;
+  const SIM = 128, PRESSURE_ITER = 18;
+  const vertex = `#version 300 es
+  in vec2 aPosition; out vec2 vUv, vL, vR, vT, vB; uniform vec2 texel;
+  void main(){ vUv=aPosition*.5+.5; vL=vUv-vec2(texel.x,0.); vR=vUv+vec2(texel.x,0.); vT=vUv+vec2(0.,texel.y); vB=vUv-vec2(0.,texel.y); gl_Position=vec4(aPosition,0.,1.); }`;
+  const head = `#version 300 es
+  precision highp float; precision highp sampler2D; in vec2 vUv, vL, vR, vT, vB; out vec4 o;`;
+  const sources = {
+    splat: `uniform sampler2D uTarget; uniform float aspect, radius; uniform vec3 color; uniform vec2 point;
+      void main(){ vec2 p=vUv-point; p.x*=aspect; o=vec4(texture(uTarget,vUv).xyz+exp(-dot(p,p)/radius)*color,1.); }`,
+    advect: `uniform sampler2D uVelocity, uSource; uniform vec2 simTexel; uniform float dt, dissipation;
+      void main(){ vec2 c=vUv-dt*texture(uVelocity,vUv).xy*simTexel; o=texture(uSource,c)/(1.+dissipation*dt); }`,
+    divergence: `uniform sampler2D uVelocity;
+      void main(){ float L=texture(uVelocity,vL).x,R=texture(uVelocity,vR).x,T=texture(uVelocity,vT).y,B=texture(uVelocity,vB).y; vec2 C=texture(uVelocity,vUv).xy;
+      if(vL.x<0.)L=-C.x; if(vR.x>1.)R=-C.x; if(vT.y>1.)T=-C.y; if(vB.y<0.)B=-C.y; o=vec4(.5*(R-L+T-B),0.,0.,1.); }`,
+    curl: `uniform sampler2D uVelocity;
+      void main(){ o=vec4(.5*(texture(uVelocity,vR).y-texture(uVelocity,vL).y-texture(uVelocity,vT).x+texture(uVelocity,vB).x),0.,0.,1.); }`,
+    vorticity: `uniform sampler2D uVelocity, uCurl, uDye; uniform float curl, dt, gravity;
+      void main(){ float L=texture(uCurl,vL).x,R=texture(uCurl,vR).x,T=texture(uCurl,vT).x,B=texture(uCurl,vB).x,C=texture(uCurl,vUv).x;
+      vec2 f=.5*vec2(abs(T)-abs(B),abs(R)-abs(L)); f/=length(f)+1e-4; f*=curl*C; f.y*=-1.;
+      vec3 d=texture(uDye,vUv).rgb; float weight=min(max(d.r,max(d.g,d.b)),1.2);
+      vec2 v=texture(uVelocity,vUv).xy+f*dt; v.y-=gravity*weight*dt; o=vec4(clamp(v,-1500.,1500.),0.,1.); }`,
+    pressure: `uniform sampler2D uPressure, uDivergence;
+      void main(){ o=vec4((texture(uPressure,vL).x+texture(uPressure,vR).x+texture(uPressure,vT).x+texture(uPressure,vB).x-texture(uDivergence,vUv).x)*.25,0.,0.,1.); }`,
+    gradient: `uniform sampler2D uPressure, uVelocity;
+      void main(){ vec2 v=texture(uVelocity,vUv).xy-vec2(texture(uPressure,vR).x-texture(uPressure,vL).x,texture(uPressure,vT).x-texture(uPressure,vB).x); o=vec4(v,0.,1.); }`,
+    fade: `uniform sampler2D uTexture; uniform float value; void main(){ o=value*texture(uTexture,vUv); }`,
+    display: `uniform sampler2D uTexture; uniform vec2 texel;
+      float m(vec3 c){ return max(c.r,max(c.g,c.b)); }
+      void main(){ vec3 c=texture(uTexture,vUv).rgb; float a=m(c);
+        float dx=m(texture(uTexture,vR).rgb)-m(texture(uTexture,vL).rgb), dy=m(texture(uTexture,vT).rgb)-m(texture(uTexture,vB).rgb);
+        vec3 n=normalize(vec3(dx,dy,.045)); vec3 light=normalize(vec3(-.35,.55,1.));
+        float diffuse=clamp(dot(n,light)*.55+.62,.35,1.15);
+        float spec=pow(clamp(dot(reflect(-light,n),vec3(0.,0.,1.)),0.,1.),38.)*.85;
+        float alpha=smoothstep(.06,.30,a);
+        vec3 hue=c/max(a,1e-3); vec3 col=hue*diffuse*mix(.78,1.,smoothstep(.3,1.2,a));
+        o=vec4((min(col,1.)+spec)*alpha,alpha); }`
+  };
+  function shader(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw Error(gl.getShaderInfoLog(s)); return s; }
+  const vs = shader(gl.VERTEX_SHADER, vertex);
+  const prog = {};
+  for (const [name, src] of Object.entries(sources)) {
+    const p = gl.createProgram(); gl.attachShader(p, vs); gl.attachShader(p, shader(gl.FRAGMENT_SHADER, head + src));
+    gl.bindAttribLocation(p, 0, "aPosition"); gl.linkProgram(p);
+    const u = {}; const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+    for (let i = 0; i < n; i++) { const name = gl.getActiveUniform(p, i).name; u[name] = gl.getUniformLocation(p, name); }
+    prog[name] = {p, u};
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1]), gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), gl.STATIC_DRAW);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(0);
+
+  function target(w, h, internal, format) {
+    gl.activeTexture(gl.TEXTURE0);
+    const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+    for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+    gl.texImage2D(gl.TEXTURE_2D, 0, internal, w, h, 0, format, gl.HALF_FLOAT, null);
+    const fbo = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    gl.viewport(0, 0, w, h); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    return {tex, fbo, w, h, attach(unit) { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex); return unit; }};
+  }
+  const double = (...a) => { let r = target(...a), w = target(...a); return {get read() { return r; }, get write() { return w; }, swap() { [r, w] = [w, r]; }}; };
+  let velocity, dye, pressure, divergence, curlT, simW, simH, dyeW, dyeH;
+  function allocate() {
+    const aspect = innerWidth / innerHeight, size = narrow() ? 512 : 900;
+    simW = aspect >= 1 ? Math.round(SIM * aspect) : SIM; simH = aspect >= 1 ? SIM : Math.round(SIM / aspect);
+    dyeW = aspect >= 1 ? Math.round(size * aspect) : size; dyeH = aspect >= 1 ? size : Math.round(size / aspect);
+    velocity = double(simW, simH, gl.RG16F, gl.RG); dye = double(dyeW, dyeH, gl.RGBA16F, gl.RGBA);
+    pressure = double(simW, simH, gl.R16F, gl.RED); divergence = target(simW, simH, gl.R16F, gl.RED); curlT = target(simW, simH, gl.R16F, gl.RED);
+  }
+  function blit(dest) {
+    if (dest) { gl.viewport(0, 0, dest.w, dest.h); gl.bindFramebuffer(gl.FRAMEBUFFER, dest.fbo); }
+    else { gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight); gl.bindFramebuffer(gl.FRAMEBUFFER, null); }
+    gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+  }
+  function use(name, texelW, texelH) { const q = prog[name]; gl.useProgram(q.p); if (q.u.texel) gl.uniform2f(q.u.texel, 1 / texelW, 1 / texelH); return q.u; }
+
+  // Public: drop ink at (x, y) in viewport fractions, y downward; velocity in px/s.
+  const pending = [];
+  function splat(x, y, vx, vy, color, radius = .0028, strength = 1) { pending.push([x, 1 - y, vx * .1, -vy * .1, color.map(c => c * strength), radius]); wake(); }
+  function applySplat([x, y, vx, vy, color, radius]) {
+    let u = use("splat", simW, simH);
+    gl.uniform1i(u.uTarget, velocity.read.attach(0)); gl.uniform1f(u.aspect, innerWidth / innerHeight);
+    gl.uniform2f(u.point, x, y); gl.uniform3f(u.color, vx, vy, 0); gl.uniform1f(u.radius, radius);
+    blit(velocity.write); velocity.swap();
+    u = use("splat", dyeW, dyeH);
+    gl.uniform1i(u.uTarget, dye.read.attach(0)); gl.uniform1f(u.aspect, innerWidth / innerHeight);
+    gl.uniform2f(u.point, x, y); gl.uniform3f(u.color, ...color); gl.uniform1f(u.radius, radius);
+    blit(dye.write); dye.swap();
+  }
+  function step(dt) {
+    gl.disable(gl.BLEND);
+    let u = use("curl", simW, simH); gl.uniform1i(u.uVelocity, velocity.read.attach(0)); blit(curlT);
+    u = use("vorticity", simW, simH);
+    gl.uniform1i(u.uVelocity, velocity.read.attach(0)); gl.uniform1i(u.uCurl, curlT.attach(1)); gl.uniform1i(u.uDye, dye.read.attach(2));
+    gl.uniform1f(u.curl, 22); gl.uniform1f(u.dt, dt); gl.uniform1f(u.gravity, 150); blit(velocity.write); velocity.swap();
+    u = use("divergence", simW, simH); gl.uniform1i(u.uVelocity, velocity.read.attach(0)); blit(divergence);
+    u = use("fade", simW, simH); gl.uniform1i(u.uTexture, pressure.read.attach(0)); gl.uniform1f(u.value, .8); blit(pressure.write); pressure.swap();
+    u = use("pressure", simW, simH); gl.uniform1i(u.uDivergence, divergence.attach(0));
+    for (let i = 0; i < PRESSURE_ITER; i++) { gl.uniform1i(u.uPressure, pressure.read.attach(1)); blit(pressure.write); pressure.swap(); }
+    u = use("gradient", simW, simH); gl.uniform1i(u.uPressure, pressure.read.attach(0)); gl.uniform1i(u.uVelocity, velocity.read.attach(1)); blit(velocity.write); velocity.swap();
+    u = use("advect", simW, simH); gl.uniform2f(u.simTexel, 1 / simW, 1 / simH); gl.uniform1f(u.dt, dt);
+    gl.uniform1i(u.uVelocity, velocity.read.attach(0)); gl.uniform1i(u.uSource, velocity.read.attach(0)); gl.uniform1f(u.dissipation, .35); blit(velocity.write); velocity.swap();
+    u = use("advect", dyeW, dyeH); gl.uniform2f(u.simTexel, 1 / simW, 1 / simH); gl.uniform1f(u.dt, dt);
+    gl.uniform1i(u.uVelocity, velocity.read.attach(0)); gl.uniform1i(u.uSource, dye.read.attach(1)); gl.uniform1f(u.dissipation, .8); blit(dye.write); dye.swap();
+  }
+  function render() {
+    gl.disable(gl.BLEND);
+    const u = use("display", dyeW, dyeH); gl.uniform1i(u.uTexture, dye.read.attach(0));
+    gl.clearColor(0, 0, 0, 0); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.clear(gl.COLOR_BUFFER_BIT); blit(null);
+  }
+
+  let running = false, last = 0, quietSince = 0, raf = 0;
+  function wake() { quietSince = performance.now(); if (!running && !motion.matches) { running = true; last = performance.now(); raf = requestAnimationFrame(loop); } }
+  function loop(now) {
+    const dt = Math.min(.025, (now - last) / 1000); last = now;
+    scrollInk(dt);
+    while (pending.length) applySplat(pending.shift());
+    step(dt); render();
+    if (now - quietSince < 6500) raf = requestAnimationFrame(loop);
+    else { running = false; gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.clear(gl.COLOR_BUFFER_BIT); }
+  }
+  function resize() {
+    const ratio = Math.min(devicePixelRatio || 1, 1.25);
+    canvas.width = Math.round(innerWidth * ratio); canvas.height = Math.round(innerHeight * ratio);
+    allocate();
+  }
+
+  // ——— Choreography ———
+  const seq = [INK.c, INK.m, INK.y, INK.o];
+  let seed = 1; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  function pour() {
+    // Arrival: four inks are poured onto the cover photograph, right of the headline.
+    seq.forEach((color, i) => setTimeout(() => {
+      const x = narrow() ? .62 + i * .1 : .56 + i * .11;
+      splat(x, .02, (rnd() - .5) * 600, 4200 + rnd() * 1400, color, narrow() ? .0032 : .0022, 1.1);
+    }, 180 + i * 260));
+  }
+  let lastY = scrollY, lastTime = 0, printed = new Set(), crossed = new Set();
+  function scrollInk(dt) {
+    const dy = scrollY - lastY; lastY = scrollY;
+    if (!dy) return;
+    const speed = clamp(Math.abs(dy) / (dt * 1000 || 16), 0, 6);
+    const coverBox = cover.getBoundingClientRect();
+    // While the cover is visible, scrolling makes the ink run.
+    if (coverBox.bottom > innerHeight * .2 && rnd() < .35 + speed * .1) {
+      const color = seq[Math.floor(rnd() * 4)];
+      splat((narrow() ? .66 : .55) + rnd() * (narrow() ? .3 : .42), coverBox.top / innerHeight * .4 + rnd() * .25, (rnd() - .5) * 200, Math.sign(dy) * (500 + speed * 260), color, .0012 + rnd() * .0014, .8);
+    }
+  }
+  function filmInk(t, previous) {
+    const down = t >= previous;
+    // Each printing unit throws its colour across the top of the sheet.
+    [[5.75, INK.c], [6.55, INK.m], [7.35, INK.y], [8.15, INK.o]].forEach(([at, color], i) => {
+      if ((previous < at) === (t >= at) && Math.abs(t - at) < 1.2) {
+        const y = .12 + i * .045;
+        splat(down ? 0 : 1, y, (down ? 1 : -1) * 5200, 300, color, .0026, 1.25);
+        splat(down ? 0 : 1, y + .03, (down ? 1 : -1) * 3800, 0, color, .0014, 1);
+      }
+    });
+    // Between stations two inks collide and wash across the frame, as on a running press.
+    [13.6, 25.6, 37.6, 44.7].forEach((at, i) => {
+      if ((previous < at) === (t >= at) && Math.abs(t - at) < 1.5) {
+        const a = seq[i % 4], b = seq[(i + 1) % 4];
+        for (let k = 0; k < 3; k++) {
+          const y = .32 + k * .1, lift = (down ? -1 : 1) * (300 + k * 200);
+          splat(0, y, 4600 - k * 500, lift, a, .0022, 1);
+          splat(1, y + .05, -4600 + k * 500, lift, b, .0022, 1);
+        }
+      }
+    });
+  }
+  let contactInked = false;
+  new IntersectionObserver(entries => {
+    if (!entries[0].isIntersecting || contactInked || motion.matches) return;
+    contactInked = true;
+    [[.1, INK.c, 1], [.9, INK.m, -1], [.3, INK.y, 1], [.75, INK.o, -1]].forEach(([x, color, dir], i) =>
+      setTimeout(() => splat(x, .55 + i * .08, dir * 2200, -400, color, .0032, .9), i * 220));
+  }, {threshold: .45}).observe(contact);
+
+  // The pointer stirs the ink on the cover.
+  let px = 0, py = 0;
+  cover.addEventListener("pointermove", e => {
+    if (motion.matches || e.pointerType !== "mouse") return;
+    const dx = e.clientX - px, dy = e.clientY - py; px = e.clientX; py = e.clientY;
+    if (Math.abs(dx) + Math.abs(dy) < 2 || e.clientX < innerWidth * .45) return;
+    splat(e.clientX / innerWidth, e.clientY / innerHeight, dx * 22, dy * 22, seq[Math.floor(performance.now() / 900) % 4], .0009, .55);
+  });
+
+  document.addEventListener("larre:temps", e => {
+    const t = e.detail.time;
+    if (motion.matches) return;
+    statementsAt(t); filmInk(t, lastTime); lastTime = t;
+  });
+  addEventListener("scroll", () => { if (!motion.matches) wake(); }, {passive: true});
+  addEventListener("resize", () => { resize(); });
+  function start() {
+    canvas.hidden = motion.matches;
+    statements.forEach(s => { s.el.style.opacity = ""; s.el.style.transform = ""; });
+    if (motion.matches) return;
+    resize(); pour();
+  }
+  motion.addEventListener("change", start);
+  start();
 }
-document.addEventListener("larre:temps", event => { filmTime = event.detail.time; statementsAt(filmTime); schedule(); });
-addEventListener("scroll", schedule, {passive: true});
-addEventListener("resize", resize);
-motion.addEventListener("change", start);
-start();

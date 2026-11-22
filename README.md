@@ -4,9 +4,9 @@ Une visite interactive de 52 secondes suit un étui depuis la palette de feuille
 
 ## Visiter l’atelier
 
-« Lancer le film » déroule la fabrication en continu. Le défilement, les cinq chapitres et le curseur permettent aussi de s’arrêter sur un geste. Au clavier, les flèches déplacent le curseur d’une seconde et la touche Fin rejoint la boîte montée. « Tourner l’étui » ouvre alors le modèle 3D.
+Le film avance uniquement au défilement, image par image : il n’y a pas de bouton de lecture. Les cinq chapitres et le curseur permettent de rejoindre un geste. Une simulation d’encre liquide (`js/encres.js`, WebGL 2) réagit à l’arrivée, au défilement, à chaque groupe d’impression et entre les postes. Au clavier, les flèches déplacent le curseur d’une seconde et la touche Fin rejoint la boîte montée. « Tourner l’étui » ouvre alors le modèle 3D.
 
-Les cadrages large et portrait disposent chacun de leur propre film. Avec la préférence de mouvement réduit, le visiteur découvre d’abord les plans fixes et peut lancer la lecture. La version texte décrit les opérations dans leur ordre de fabrication.
+Les cadrages large et portrait disposent chacun de leur propre film. Avec la préférence de mouvement réduit, le visiteur découvre les plans fixes de chaque chapitre, sans encre animée. La version texte décrit les opérations dans leur ordre de fabrication.
 
 ## Images et procédés
 
