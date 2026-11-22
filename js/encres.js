@@ -80,11 +80,11 @@ function printingInk(t) {
     for (let x = 0; x <= head * W; x += 12) ctx.lineTo(x, y + Math.sin(x / 70 + i) * 2.4);
     for (let x = head * W; x >= 0; x -= 12) ctx.lineTo(x, y + thick + Math.sin(x / 55 + i * 2) * 2.4);
     ctx.fill();
-    for (let d = 0; d < 7; d++) {
+    for (let d = 0; d < 4; d++) {
       const x = (rand(i * 10 + d) * .94 + .03) * W;
       if (x > head * W) continue;
       const age = t - start - (x / W) * 1.1;
-      const length = clamp(age, 0, 3) * (40 + rand(d + i) * 90);
+      const length = Math.min(H * .16, clamp(age, 0, 3) * (25 + rand(d + i) * 45));
       drop(x, y + thick + length, 3.5 + rand(d * 3 + i) * 4, color, length, .9 * fade);
     }
   });
