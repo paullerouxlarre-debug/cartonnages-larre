@@ -299,6 +299,31 @@ function straightBelt(root,x1,x2,top,z,width,radius,material=p.belt) {
   }
 }
 
+// Same motion as the folder-gluer shot: the carton runs print side down and folds with x.
+function flapTrack(root,panelIndex,across,x0,x1,lift) {
+  // A detached probe: its world frame is the station frame used by the shot.
+  const probe=carton.makeCarton(new T.Group()),nodes=[],twists=[],rods=[];
+  const smooth=(a,b,x)=>{const u=Math.min(1,Math.max(0,(x-a)/(b-a)));return u*u*(3-2*u);};
+  const width=[carton.stock.side,carton.stock.front,carton.stock.side,carton.stock.front][panelIndex];
+  // The belt leans on the flap ahead of and behind the probe point: keep it this far out.
+  const clearance=carton.stock.thickness+lift;
+  let previous=null;
+  for(let i=0;i<=9;i++){
+    const x=x0+(x1-x0)*i/9;
+    probe.pose({x,y:1.16+.0012,z:0,roll:Math.PI,foldLeft:smooth(-.73,.30,x),foldBack:smooth(.29,1.43,x),open:0,close:0});
+    probe.pivot.updateMatrixWorld(true);
+    const holder=probe.panels[panelIndex];
+    const at=holder.localToWorld(new T.Vector3(0,clearance,width*across));
+    const zAxis=holder.localToWorld(new T.Vector3(0,0,1)).sub(holder.localToWorld(new T.Vector3()));
+    let angle=Math.atan2(zAxis.y,zAxis.z);
+    if(previous!==null)while(Math.abs(angle-previous)>Math.PI/2)angle+=angle<previous?Math.PI:-Math.PI;
+    previous=angle;
+    const out=holder.localToWorld(new T.Vector3(0,1,0)).sub(holder.localToWorld(new T.Vector3())).normalize();
+    nodes.push([at.x,at.y,at.z]);twists.push(angle);rods.push([at.x+out.x*.013,at.y+out.y*.013,at.z+out.z*.013]);
+  }
+  return {nodes,twists,rods};
+}
+
 // The guide belt twists with the flap. Its working side changes continuously from
 // horizontal to vertical and back, rather than intersecting the steel plough at the fold.
 function foldBelt(root,nodes,twists) {
@@ -424,14 +449,13 @@ function gluer(fixed,cover,motion,moving) {
   cylinder(fixed,-.947,1.347,.327,.011,.188,p.steel);
   box(fixed,-.947,1.329,.414,.051,.050,.039,p.aluminum);
   cylinder(fixed,-.947,1.233,.414,.013,.220,p.steel,'y');
-  const guideA=[[-.72,1.164,.207],[-.43,1.183,.207],[-.12,1.224,.172],[.13,1.241,.124],[.32,1.215,.080],[.49,1.167,.061]];
-  const guideB=[[.298,1.164,-.194],[.54,1.188,-.203],[.77,1.259,-.175],[.98,1.295,-.086],[1.18,1.252,.001],[1.395,1.168,.049]];
-  foldBelt(fixed,guideA,[0,.22,.86,1.70,2.53,3.11]);
-  foldBelt(fixed,guideB,[0,-.21,-.79,-1.57,-2.32,-3.12]);
-  for(const [path,side] of [[guideA,1],[guideB,-1]]){
-    const coords=path.map(([x,y,z])=>[x,y+.010,z+side*.015]);
-    hose(fixed,coords,.005,p.steel,30);
-  }
+  // Each guide belt follows the outer face of its flap as the carton travels: the nodes are
+  // taken from the folding carton itself, so the belt never passes through the board.
+  const guideA=flapTrack(fixed,0,.42,-.72,.49,.010), guideB=flapTrack(fixed,3,.40,.298,1.395,.016);
+  foldBelt(fixed,guideA.nodes,guideA.twists);
+  foldBelt(fixed,guideB.nodes,guideB.twists);
+  // The steel guide rods ride just outside each belt, on the outer side of the flap.
+  for(const guide of [guideA,guideB])hose(fixed,guide.rods,.005,p.steel,30);
   for(const x of [-1.59,-1.36,-.69,-.37,.05,.396,.702,.998,1.257]) {
     jockey(fixed,motion,moving,x,-.050,-1);
     // The near row ends before the side-flap guide begins to turn inward.

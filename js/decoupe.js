@@ -1,5 +1,6 @@
 import * as T from '../assets/vendor/three.module.min.js';
-import {makePressSheet, makeStrippedSheet, stock, imposePositions} from './etui.js';
+import {makePressSheet, makeStrippedSheet, stock, imposePositions, blankOutline} from './etui.js';
+import {zCenter} from './papier.js';
 import {paperLine, paint as p, box, group, mesh, bar, cylinder, cabinet} from './machines-pieces.js';
 import {ease, mix} from './matiere.js';
 
@@ -75,6 +76,37 @@ function gripper(root) {
   return unit;
 }
 
+// What the forme leaves on the sheet: a kerf along each contour and a crease along each fold.
+// It glows at the stroke, then stays as a fine line, so the cut is readable before stripping.
+function cutMarks(parent) {
+  const kerf=new T.MeshBasicMaterial({color:0xff6a2c,toneMapped:false,transparent:true,depthWrite:false,side:T.DoubleSide});
+  const crease=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false,transparent:true,depthWrite:false,side:T.DoubleSide});
+  const {front,side,length}=stock,half=length/2;
+  function ribbon(paths,width,material) {
+    const v=[];
+    for(const path of paths)for(let i=0;i<path.length-1;i++){
+      const [ax,az]=path[i],[bx,bz]=path[i+1],len=Math.hypot(bx-ax,bz-az)||1;
+      const nx=-(bz-az)/len*width/2,nz=(bx-ax)/len*width/2,y=.0006;
+      v.push(ax-nx,y,az-nz,bx-nx,y,bz-nz,bx+nx,y,bz+nz,ax-nx,y,az-nz,bx+nx,y,bz+nz,ax+nx,y,az+nz);
+    }
+    const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(v,3));
+    const m=new T.Mesh(geo,material);m.renderOrder=2;m.frustumCulled=false;parent.add(m);return m;
+  }
+  const outline=blankOutline(),cuts=[],folds=[];
+  for(const {x,z} of imposePositions){
+    const loop=outline.map(([u,w])=>[x+w,z+u]);cuts.push([...loop,loop[0]]);
+    for(const c of [-side,0,front,front+side].map(c=>c-zCenter))
+      for(let s=-half;s<half-.004;s+=.012)folds.push([[x+s,z+c],[x+Math.min(half,s+.007),z+c]]);
+  }
+  ribbon(cuts,.0035,kerf);ribbon(folds,.0026,crease);
+  return function show(time){
+    const on=time>=19.42, flash=on?1-Math.min(1,(time-19.42)/1.1):0;
+    const fade=1-Math.min(1,Math.max(0,(time-21.9)/.6));
+    kerf.opacity=on?fade:0;crease.opacity=on?.9*fade:0;
+    kerf.color.setHex(0x3a2a22).lerp(new T.Color(0xff6a2c),Math.max(flash,.55));
+  };
+}
+
 export function cuttingPass(root,props,machine) {
   const feedY=1.156;
   props.sheetLoad(root,-2.05,true,feedY);
@@ -85,6 +117,7 @@ export function cuttingPass(root,props,machine) {
   const head=blankingHead(root),bar=gripper(root);
   const sheet=makePressSheet(root),cut=makeStrippedSheet(root);
   sheet.setInk(1);
+  const marks=cutMarks(cut.pivot);
   // Two earlier sets of loose clippings in the drawer. All their printed
   // faces remain on the original imposition and the support posts stay clear.
   const prior=group(root,stripperX,trayFloor+.00053,0);
@@ -107,6 +140,7 @@ export function cuttingPass(root,props,machine) {
     const isCut=time>=19.42;
     sheet.pivot.visible=!isCut;sheet.pivot.position.set(sheetX,height,0);
     cut.pivot.visible=isCut;cut.pivot.position.set(sheetX,height,0);
+    marks(time);
 
     const down=ease(20.96,21.85,time),back=ease(22.01,22.47,time);
     const travel=down*(1-back);

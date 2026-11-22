@@ -96,7 +96,7 @@
       image.decoding = "async";
       image.onload = () => { inflight--; if (set === sequenceSet) { frames[i] = image; if (shown !== Math.round(time * fps)) drawSequence(); } pump(); };
       image.onerror = () => { inflight--; pump(); };
-      image.src = set + String(i + 1).padStart(3, "0") + ".webp?v=5";
+      image.src = set + String(i + 1).padStart(3, "0") + ".webp?v=6";
     }
   }
   function want(index) {
@@ -119,13 +119,14 @@
     if (pick === shown) return;
     const image = frames[pick], scale = Math.max(w / image.naturalWidth, h / image.naturalHeight);
     const dw = image.naturalWidth * scale, dh = image.naturalHeight * scale;
+    sequenceContext.imageSmoothingQuality = "high";
     sequenceContext.drawImage(image, (w - dw) / 2, (h - dh) / 2, dw, dh);
     shown = pick === index ? pick : -1;
     journey.classList.add("sequence-ready");
   }
 
   function framePath(name) {
-    return "assets/film/" + (portrait.matches ? "portrait/" : "") + name + ".webp?v=5";
+    return "assets/film/" + (portrait.matches ? "portrait/" : "") + name + ".webp?v=6";
   }
 
   function measure() {

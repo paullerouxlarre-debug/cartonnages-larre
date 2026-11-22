@@ -109,6 +109,8 @@ export function offsetPass(root,props,machine) {
   const first=-4, final=Math.ceil(14/cadence);
   for(let index=first;index<=final;index++) {
     const sheet=makePressSheet(root,{flexible:true});
+    // Neighbouring sheets catch the light a little differently, so each one reads in the stream.
+    sheet.pivot.traverse(o=>{if(o.isMesh&&Array.isArray(o.material))o.material[0].color.setHex(index%2?0xe4dfd2:0xffffff);});
     sheets.push({sheet,index,landing:outputTop+.00145+(index-first)*stock.thickness*1.12});
   }
   return function update(t) {

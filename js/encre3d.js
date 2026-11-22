@@ -46,19 +46,29 @@ function inkedMaterial(base, reveal) {
     shader.uniforms.reveal = reveal;
     shader.vertexShader = 'varying vec3 vInkW;\n' + shader.vertexShader.replace('#include <project_vertex>',
       '#include <project_vertex>\nvInkW=(modelMatrix*vec4(transformed,1.0)).xyz;');
-    shader.fragmentShader = 'uniform vec4 reveal[7];\nvarying vec3 vInkW;\n' + shader.fragmentShader.replace('#include <map_fragment>', `
+    shader.fragmentShader = 'uniform vec4 reveal[28];\nvarying vec3 vInkW;\n' + shader.fragmentShader.replace('#include <map_fragment>', `
       vec3 substrate=vec3(0.90466,0.87962,0.79130);
       vec3 whole=texture2D(map, vMapUv).rgb;
       vec3 refl=clamp(whole/substrate,vec3(.001),vec3(1.));
       float black=1.-max(max(refl.r,refl.g),refl.b);
       vec3 cmy=1.-refl/max(.001,1.-black);
+      // Each ink falls as four jets, one over each pose; its coverage is the union of the four.
       float cov[7];
+      float wet=0.;
       for(int i=0;i<7;i++){
-        vec2 d=vInkW.xz-reveal[i].xy;
-        float a=atan(d.y,d.x);
-        float wob=.05*sin(a*5.+float(i)*2.1)+.025*sin(a*11.+float(i));
-        float r=reveal[i].z*(1.+wob);
-        cov[i]=1.-smoothstep(r-.018,r,length(d));
+        float c=0.;
+        for(int k=0;k<4;k++){
+          vec4 jet=reveal[i*4+k];
+          vec2 d=vInkW.xz-jet.xy;
+          float a=atan(d.y,d.x);
+          float wob=.06*sin(a*5.+float(i*4+k)*2.1)+.03*sin(a*11.+float(i+k));
+          float r=jet.z*(1.+wob);
+          float l=length(d);
+          float ci=1.-smoothstep(r-.014,r,l);
+          c=max(c,ci);
+          if(i==6) wet=max(wet,smoothstep(r-.09,r-.008,l)*ci*step(jet.z,1.2));
+        }
+        cov[i]=c;
       }
       // Pantone 1 carries the brick-orange areas, Pantone 2 the deep green: one exact ink each.
       float spot1=1.-smoothstep(.05,.14,distance(whole,vec3(.40,.085,.04)));
@@ -67,11 +77,9 @@ function inkedMaterial(base, reveal) {
       print=mix(print,mix(substrate,whole,cov[0]),spot1);
       print=mix(print,mix(substrate,whole,cov[5]),spot2*(1.-spot1));
       float inkVarnish=cov[6];
-      // A wet, brighter band rides the varnish front as it spreads.
-      vec2 dv=vInkW.xz-reveal[6].xy;
-      float wet=smoothstep(reveal[6].z-.12,reveal[6].z-.01,length(dv))*cov[6]*step(reveal[6].z,2.);
-      diffuseColor.rgb *= print*(1.+.35*wet);`).replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
-      material.roughness=mix(material.roughness,.22,inkVarnish);
+      // A wet, bright band rides the varnish front; the varnished board stays a little lighter.
+      diffuseColor.rgb *= print*(1.+.9*wet+.06*inkVarnish);`).replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
+      material.roughness=mix(material.roughness,.08,inkVarnish);
       #ifdef USE_CLEARCOAT
         material.clearcoat=mix(material.clearcoat,1.,inkVarnish);
         material.clearcoatRoughness=mix(material.clearcoatRoughness,.03,inkVarnish);
@@ -143,7 +151,9 @@ export async function inkScene(canvas) {
   floor.rotation.x = -Math.PI / 2; floor.position.y = -.002; floor.receiveShadow = true; scene.add(floor);
 
   // Printed surfaces share one inked material each, revealed by the pours.
-  const reveal = {value: pours.map(p => new T.Vector4(p.at[0], p.at[1], 0, 0))};
+  // Four jets per ink, one above each pose, slightly offset towards the ink's own impact point.
+  const jetsAt = pours.map(p => imposePositions.map(({x, z}) => [C0[0] + x + (p.at[0] - C0[0]) * .28, C0[1] + z + (p.at[1] - C0[1]) * .28]));
+  const reveal = {value: jetsAt.flat().map(([x, z]) => new T.Vector4(x, z, 0, 0))};
   const lib = materials(), swapped = new Map();
   const swap = m => {
     if (m !== lib.outer && m !== lib.plainSheet) return m;
@@ -201,12 +211,16 @@ export async function inkScene(canvas) {
   });
 
   // Inks: glossy liquid, a column each, a crown of droplets and a spreading pool.
-  const inks = pours.map((p, i) => {
+  const inks = pours.flatMap((p, i) => {
     const material = p.varnish
-      ? new T.MeshPhysicalMaterial({color: 0xffffff, roughness: 0, metalness: 0, clearcoat: 1, clearcoatRoughness: 0, transparent: true, opacity: .42, envMapIntensity: 2.2})
+      ? new T.MeshPhysicalMaterial({color: 0xf6fbff, roughness: 0, metalness: 0, clearcoat: 1, clearcoatRoughness: 0, transparent: true, opacity: .78,
+          envMapIntensity: 3.2, iridescence: .9, iridescenceIOR: 1.35, specularIntensity: 1})
       : new T.MeshPhysicalMaterial({color: p.color, roughness: .07, metalness: 0, clearcoat: 1, clearcoatRoughness: .04, sheen: .3});
+    return jetsAt[i].map((at, k) => jet(p, i, k, at, material));
+  });
+  function jet(p, i, k, at, material) {
     const col = stream(scene, material);
-    const drops = Array.from({length: 26}, (_, k) => {
+    const drops = Array.from({length: 10}, (_, k) => {
       const d = new T.Mesh(new T.SphereGeometry(1, 20, 14), material); d.castShadow = true; scene.add(d);
       return {d, a: rand(k + i * 31) * Math.PI * 2, v: .35 + rand(k * 3 + i) * .55, up: .5 + rand(k * 7 + i) * .9, s: .006 + rand(k * 5 + i) * .010};
     });
@@ -218,8 +232,8 @@ export async function inkScene(canvas) {
     const poolGeo = new T.ExtrudeGeometry(outlineShape, {depth: 0, bevelEnabled: true, bevelThickness: .5, bevelSize: .3, bevelSegments: 6, curveSegments: 64});
     poolGeo.rotateX(-Math.PI / 2);
     const pool = new T.Mesh(poolGeo, material); pool.castShadow = true; scene.add(pool);
-    return {p, col, drops, pool};
-  });
+    return {p, i, k, at, col, drops, pool};
+  }
   // Glue: a thin pale thread from a nozzle onto the side tab.
   const glueMat = new T.MeshPhysicalMaterial({color: 0xe9a93a, roughness: .12, clearcoat: 1, clearcoatRoughness: .05});
   const glueThread = stream(scene, glueMat);
@@ -264,28 +278,28 @@ export async function inkScene(canvas) {
     const portrait = w / h < .9, pPrint = p;
 
     // 1. Pours on the sheet.
-    inks.forEach(({p: pour, col, drops, pool}, i) => {
-      const x = pour.at[0], z = pour.at[1], y = SHEET_Y, t0 = pour.start, hit = t0 + FALL;
+    inks.forEach(({p: pour, i, k: n, at, col, drops, pool}) => {
+      const x = at[0], z = at[1], y = SHEET_Y, t0 = pour.start + n * .004, hit = t0 + FALL;
       const headY = mix(1.9, y + .008, ease(t0, hit, p));
       const topY = mix(1.9, y + .006, ease(hit + .012, hit + .06, p));
       const on = p > t0 && p < hit + .07;
       col.mesh.visible = on;
-      if (on) col.update(topY, headY, x, z, .026, p * 40 + i);
+      if (on) col.update(topY, headY, x, z, pour.varnish ? .02 : .017, p * 40 + i + n);
       const s = clamp((p - hit) / .06);
       drops.forEach(({d, a, v, up, s: size}) => {
         d.visible = s > 0 && s < 1;
         if (!d.visible) return;
-        const r = v * s * .15, dy = up * .22 * (s - s * s * 1.15);
+        const r = v * s * .11, dy = up * .17 * (s - s * s * 1.15);
         d.position.set(x + Math.cos(a) * r, Math.max(y + .003, y + dy), z + Math.sin(a) * r);
         const k = size * 1.6 * (1 - s * .6);
         d.scale.set(k, k * (1 + (1 - s) * 1.2), k);
       });
       const spread = ease(hit, hit + SPREAD, p), soak = ease(hit + .03, hit + .11, p);
       // The front sweeps the whole sheet, then keeps going so the print stays complete.
-      reveal.value[i].z = spread * 1.5 + ease(hit + SPREAD, 1, p) * 3;
+      reveal.value[i * 4 + n].z = spread * .62 + ease(hit + SPREAD, 1, p) * 3;
       pool.visible = spread > 0 && soak < 1;
       pool.position.set(x, y + .001, z);
-      const size = (.02 + spread * .07) * (1 - soak * .35); pool.scale.set(size, .02 * (1 - soak), size);
+      const size = (.014 + spread * .05) * (1 - soak * .35); pool.scale.set(size, .02 * (1 - soak), size);
     });
 
     // From here on the scene runs on its own clock, after the print.

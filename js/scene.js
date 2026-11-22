@@ -111,14 +111,14 @@ function stationSet(scene,id,props) {
 // Each shot has a cut, an optical axis and its own subject distance, in metres.
 const shots=[
   [0,0,[-2.97,.79,.02],[-1.28,.66,1.20],2.98,2.49],
-  [2.45,0,[-2.22,1.165,.05],[-1,.85,.60],.95,.82],
-  [4.8,0,[-.15,1.10,0],[.55,.45,1],1.50,1.35],
-  [7,0,[.85,1.10,0],[.55,.45,1],1.50,1.35],
+  [2.45,0,[-2.55,1.17,.02],[.95,.2,.42],.9,.78],
+  [4.7,0,[-.15,1.12,0],[.28,1.15,1],1.65,1.45],
+  [7,0,[.85,1.12,0],[.28,1.15,1],1.65,1.45],
   [9.1,0,[2.91,1.095,0],[1.28,.77,.08],1.61,1.51],
   [11.7,0,[2.95,.75,.04],[1.29,.73,.18],2.11,2.42],
   [14,1,[-1.87,.91,.02],[-.98,.63,1.32],2.12,1.75],
   [17.9,1,[-.55,1.17,-.05],[-.21,.31,1],.96,.84],
-  [21,1,[.55,.90,.05],[.30,.30,1],1.62,1.50],
+  [20.75,1,[.55,.90,.05],[.30,.30,1],1.62,1.50],
   [23.6,1,[1.65,1.10,0],[.62,.62,.62],1.45,1.30],
   [26,2,[-2.60,1.20,0],[-.51,.38,.70],1.12,.87],
   [29,2,[applicator.x,1.168,applicator.z],[.29,.70,.60],.158,.138],
@@ -186,7 +186,7 @@ export async function atelierRenderer(canvas) {
     }
     const v=ease(start,end,t),vertical=w/h<1.22;
     const aim=vector(...p), direction=vector(...axis).normalize();
-    if(k===2)aim.x=mix(-1.51,-.38,v);
+    if(k===2)aim.x=mix(-1.75,-.30,v);
     if(k===3)aim.x=mix(.46,1.45,v);
     // Track the stock from the feeder until the next tool takes over.
     if(start===14){
@@ -206,7 +206,7 @@ export async function atelierRenderer(canvas) {
     }
     let distance=mix(from,to,v)*(vertical?1.20:1);
     // Establish each freestanding machine before cutting in to its tool path.
-    if((t>=4 && t<5.85)||(t>=14 && t<15.65)||(t>=26 && t<27.55)){
+    if((t>=4 && t<4.7)||(t>=14 && t<15.65)||(t>=26 && t<27.55)){
       const midpoint=id===0?-.08:id===1?-.10:.02;
       aim.set(midpoint,1.11,0);
       direction.set(id===1?-1.1:-1.48,.65,2.1).normalize();

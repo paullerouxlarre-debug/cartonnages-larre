@@ -374,5 +374,5 @@ export function makeCarton(parent) {
     hinges.forEach(update=>update());
   }
   pose();
-  return {pivot,centre,pose};
+  return {pivot,centre,pose,panels};
 }
