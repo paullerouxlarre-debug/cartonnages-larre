@@ -1,10 +1,12 @@
 import * as T from '../assets/vendor/three.module.min.js';
 import {RGBELoader} from '../assets/vendor/RGBELoader.js';
-import {makePressSheet,makeStrippedSheet,makeBlankPile,makeCarton} from './etui.js';
+import {makeBlankPile,makeCarton} from './etui.js';
 import {buildStation} from './atelier.js';
 import {box,group,ease,mix} from './matiere.js';
 import {loadingProps} from './logistique.js';
 import {applicator,depositAt,glueValve} from './colle.js';
+import {offsetPass} from './impression.js';
+import {cuttingPass} from './decoupe.js';
 
 const duration=52, paperY=1.16;
 const vector=(x,y,z)=>new T.Vector3(x,y,z);
@@ -24,7 +26,6 @@ function packingTable(g,props,x=0) {
   box(g,x,benchHeight-.022,0,1.7,.044,.89,props.wood);
   for(const dx of [-.74,.74])for(const dz of [-.34,.34])box(g,x+dx,.439,dz,.043,.878,.043,metal);
 }
-function stockAtDelivery(props,g,x) {return props.sheetLoad(g,x,true,1.093);}
 
 function unpackingPosition(s){
   const shift=ease(1.14,2.56,s);
@@ -40,36 +41,9 @@ function stationSet(scene,id,props) {
   const machine=kind?buildStation(root,kind):null;
   let update;
   if(id===0){
-    props.sheetLoad(root,-3.15,false,1.157);
-    stockAtDelivery(props,root,2.95);
-    const sheet=makePressSheet(root);
-    update=t=>{
-      let x,y,ink;
-      if(t<4.8){
-        const feed=ease(1.7,4.8,t);
-        x=-3.15+feed*1.16;y=1.161+Math.sin(feed*Math.PI)*.042;ink=0;
-      }else if(t<9.1){
-        x=mix(-2.10,1.88,(t-4.8)/4.3);y=paperY;ink=ease(-1.75,1.54,x);
-      }else{
-        const phase=((t-9.1)/1.48)%1;
-        x=mix(2.06,2.95,ease(0,.7,phase));y=mix(1.178,1.095,ease(.50,.93,phase));ink=1;
-      }
-      sheet.pivot.position.set(x,y,0);sheet.setInk(ink);
-      machine.animate(t,{press:0,travel:t*1.2,cutaway:t>=5.85&&t<9.1?1:0,feeder:ease(1.50,2.1,t)*(1-ease(2.5,3.4,t))});
-    };
+    update=offsetPass(root,props,machine);
   }else if(id===1){
-    props.sheetLoad(root,-2.05,true,1.156);
-    props.batches(root,1.65,0,.147);
-    const sheet=makePressSheet(root),strip=makeStrippedSheet(root);
-    sheet.setInk(1);
-    update=t=>{
-      const s=t-14,press=ease(4.7,5.36,s)*(1-ease(5.67,6.32,s));
-      sheet.pivot.visible=s<7;strip.pivot.visible=s>=7;
-      sheet.pivot.position.set(mix(-2.05,-.55,ease(1.35,4.55,s)),paperY+.044*press,0);
-      strip.pivot.position.set(mix(.55,1.65,ease(8.5,10.8,s)),mix(paperY,.147+.2935,ease(10.4,11.8,s)),0);
-      strip.setSeparation(ease(7.2,8.73,s));
-      machine.animate(s,{press,travel:s,cutaway:s>=3.9?1:0,stripping:ease(7,7.7,s)*(1-ease(8.2,8.8,s)),feeder:ease(1.2,1.7,s)*(1-ease(2.1,3.15,s))});
-    };
+    update=cuttingPass(root,props,machine);
   }else if(id===2){
     const pile=makeBlankPile(root,{count:160});
     pile.pivot.rotation.x=Math.PI;pile.pivot.position.set(-2.65,paperY+pile.height+.001,0);
@@ -137,15 +111,15 @@ function stationSet(scene,id,props) {
 // Each shot has a cut, an optical axis and its own subject distance, in metres.
 const shots=[
   [0,0,[-2.97,.79,.02],[-1.28,.66,1.20],2.98,2.49],
-  [2.45,0,[-3.09,1.166,.11],[-.61,.27,.62],1.11,.94],
-  [4.8,0,[-.56,1.22,.03],[-.40,.29,1.10],1.04,.88],
-  [7,0,[.85,1.18,.03],[.34,.52,.87],1.20,1.06],
+  [2.45,0,[-2.22,1.165,.05],[-1,.85,.60],.95,.82],
+  [4.8,0,[-.15,1.10,0],[.55,.45,1],1.50,1.35],
+  [7,0,[.85,1.10,0],[.55,.45,1],1.50,1.35],
   [9.1,0,[2.91,1.095,0],[1.28,.77,.08],1.61,1.51],
   [11.7,0,[2.95,.75,.04],[1.29,.73,.18],2.11,2.42],
   [14,1,[-1.87,.91,.02],[-.98,.63,1.32],2.12,1.75],
   [17.9,1,[-.55,1.17,-.05],[-.21,.31,1],.96,.84],
-  [21,1,[.56,1.115,.02],[.12,.69,.81],1.13,1.08],
-  [23.6,1,[1.65,.41,0],[1,.72,.32],1.43,1.36],
+  [21,1,[.55,.90,.05],[.30,.30,1],1.62,1.50],
+  [23.6,1,[1.65,1.10,0],[.62,.62,.62],1.45,1.30],
   [26,2,[-2.60,1.20,0],[-.51,.38,.70],1.12,.87],
   [29,2,[applicator.x,1.168,applicator.z],[.29,.70,.60],.158,.138],
   [32,2,[.36,1.19,.05],[.24,.58,.74],.87,.94],

@@ -25,25 +25,26 @@
     { start: 45, post: "Réception", title: "Chez le client", image: "client" }
   ];
   const captions = [
-    [0, "Au margeur, les feuilles de carton vierge sont empilées sur une palette."],
-    [2.45, "Les ventouses soulèvent la feuille du dessus et la présentent à la presse."],
+    [0, "Au margeur, des ventouses prennent une à une les feuilles de carton vierge sur la palette."],
+    [2.45, "Sur la table de marge, les feuilles se chevauchent. Chacune s’arrête contre les taquets frontaux, puis la pince l’emporte."],
     [4, "Du margeur à la réception, les groupes imprimants se succèdent dans la presse offset."],
-    [5.85, "Les groupes offset déposent les encres successives sur la feuille entière."],
+    [5.85, "À chaque groupe, une nouvelle encre se dépose. Le décor se compose couleur après couleur."],
     [9.1, "En réception, les feuilles s’empilent de nouveau. Le même décor apparaît quatre fois sur chacune."],
     [14, "Au poste de découpe, une palette de feuilles imprimées alimente l’autoplatine."],
     [16.35, "La feuille imprimée quitte la pile et avance vers la platine."],
     [17.9, "La platine monte contre la forme. Les filets découpent les contours et marquent les plis."],
-    [21, "Les déchets se détachent autour des quatre formes découpées."],
-    [23.6, "La séparation des poses donne quatre piles distinctes. Les rabats se voient sur leur contour."],
+    [21, "Les poinçons chassent les déchets vers le bac. Les pinces gardent la feuille en repère."],
+    [23.6, "En réception, les quatre poses se déposent à plat sur leurs piles."],
     [26, "Au margeur de la plieuse-colleuse, les poses sont empilées à plat, côté intérieur visible."],
     [28.30, "Les bandes entraînent la pose à plat vers le bec de colle."],
-    [29.25, "La colle se dépose sur la patte latérale pendant que les bandes entraînent la pose."],
+    [29.25, "Sous la buse fixe, un filet de colle s’allonge sur la patte latérale pendant son passage."],
     [32, "Les guides rabattent les panneaux. La face imprimée revient à l’extérieur."],
     [36, "Le joint est pressé. Les étuis collés se suivent à plat en une nappe régulière."],
     [38, "Les étuis sont rangés à plat dans leur caisse de transport."],
+    [39.4, "Les petits rabats se couchent, puis les grands. Un ruban adhésif ferme la jonction."],
     [42, "Les caisses fermées quittent le quai sur palette."],
     [45, "À réception, un étui sort de la caisse. Ses faces s’écartent le long des rainages."],
-    [49.4, "Les rabats ferment l’étui. Sa tranche laisse voir l’épaisseur du carton."]
+    [48.65, "Le fond se ferme, puis le couvercle. L’étui monté est posé sur la table."]
   ];
   const chapterButtons = Array.from(document.querySelectorAll("[data-sequence]"));
   const station = byId("station");
@@ -75,7 +76,7 @@
   function compact() { return motion.matches || mediaFailed; }
 
   function framePath(name) {
-    return "assets/film/" + (portrait.matches ? "portrait/" : "") + name + ".webp?v=4";
+    return "assets/film/" + (portrait.matches ? "portrait/" : "") + name + ".webp?v=5";
   }
 
   function measure() {
@@ -304,7 +305,7 @@
     const request = ++inspectorRequest;
     refresh();
     try {
-      const scene = await import("./scene.js?v=4");
+      const scene = await import("./scene.js?v=5");
       if (!inspectorOpen || request !== inspectorRequest) return;
       canvas.hidden = false;
       rendererPromise ||= scene.atelierRenderer(canvas);
@@ -393,7 +394,7 @@
   motion.addEventListener("change", motionChange);
   function chooseFraming() {
     film.poster = framePath("feuille");
-    const file = portrait.matches ? "fabrication-mobile.mp4?v=4" : "fabrication.mp4?v=4";
+    const file = portrait.matches ? "fabrication-mobile.mp4?v=5" : "fabrication.mp4?v=5";
     if (loaded && !mediaFailed && film.currentSrc && !film.currentSrc.endsWith("/" + file)) {
       const resume = active;
       pause();

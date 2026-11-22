@@ -21,7 +21,7 @@ Le dépôt se sert comme un site statique, à sa racine ou dans un sous-dossier.
 - `index.html` contient le parcours, sa transcription et les coordonnées.
 - `assets/film/` réunit les deux films et leurs photogrammes. `assets/images/` contient les vues de l’entreprise.
 - `js/visite.js` synchronise la lecture, le défilement, les légendes et les commandes.
-- `js/scene.js`, `js/atelier.js`, `js/etui.js` et `js/matiere.js` décrivent le modèle et ses mouvements.
+- `js/scene.js`, `js/atelier.js`, `js/etui.js` et `js/matiere.js` décrivent le modèle et ses mouvements. `js/impression.js` anime le passage en presse offset (margeur, taquets, quatre groupes, réception), `js/decoupe.js` l’autoplatine (pinces, éjection des déchets, dépose des poses) et `js/colle.js` le filet de colle.
 - Les polices et Three.js sont hébergés dans le dépôt avec leurs licences.
 
 ## Références du film
@@ -37,4 +37,10 @@ Pour régénérer les vidéos depuis le site servi en HTTP, utiliser Node avec P
 ```sh
 node outils/rendre-film.cjs http://localhost:8080/ assets/film
 node outils/rendre-film.cjs http://localhost:8080/ assets/film --portrait
+```
+
+Pour contrôler quelques instants sans calculer tout le film, `outils/rendre-plans.cjs` assemble une planche d’images aux secondes demandées.
+
+```sh
+node outils/rendre-plans.cjs http://localhost:8080/ planche.jpg 3.3,21.6,30.4,41 --portrait
 ```

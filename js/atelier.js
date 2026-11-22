@@ -1,5 +1,6 @@
 import * as T from '../assets/vendor/three.module.min.js';
 import * as carton from './etui.js';
+import {offsetLayout} from './impression.js';
 import {paperLine as line, paint as p, box, cylinder, group, mesh, bar, panel, cabinet, bolt, hose,
   feet, dial, adjustableGuide, footboard, roller, safetyLabel, controlPanel, feeder, pack} from './machines-pieces.js';
 
@@ -9,7 +10,7 @@ const pressCenters=[-1.65,-.65,.35,1.35];
 // registration table stay free for the separately animated sheets.
 function registerTable(fixed,from,to,width) {
   const mid=(from+to)/2,len=to-from;
-  cabinet(fixed,mid,line-.066,0,len,.093,width+.042,p.aluminum,.006);
+  cabinet(fixed,mid,line-.066,0,len,.093,width+.042,p.graphite,.006);
   for(const z of [-.40,-.20,0,.20,.40]) {
     box(fixed,mid,line-.015,z,len-.012,.015,.049,p.rubber);
     for(let x=from+.04;x<to-.02;x+=.065)
@@ -60,11 +61,18 @@ function offset(fixed,cover,motion,moving) {
     }
   }
   footboard(cover,-2.07,1.91,.895);
-  const suction=feeder(fixed,motion,-3.15,true);
-  registerTable(fixed,-2.751,-2.045,1.037);
+  const suction=feeder(fixed,motion,offsetLayout.feederX,true);
+  const {frontLay,impressionR:ri}=offsetLayout;
+  registerTable(fixed,offsetLayout.feederX+.40,frontLay+.045,1.037);
+  // Front lays: four stops rise in front of the leading edge, then drop under the line to release it.
+  const lays=group(motion);
+  for(const z of [-.40,-.14,.14,.40]){
+    box(lays,frontLay+.006,line+.004,z,.010,.026,.034,p.red);
+    box(lays,frontLay+.017,line-.012,z,.020,.016,.040,p.cast);
+  }
   for(const [index,x] of pressCenters.entries()){
     outerPressTower(fixed,cover,x,index);
-    roller(motion,x,line-.192,0,.192,1.062,p.hardened,moving,-1,true);
+    roller(motion,x,line-ri,0,ri,1.062,p.hardened,moving,-1,true);
     roller(motion,x,line+.143,0,.143,1.064,p.pressBlanket,moving,1,true);
     roller(motion,x-.145,line+.387,-.002,.142,1.058,p.steel,moving,-1,true);
     // The form rollers and distributing drums sit above the plate, behind the service opening.
@@ -77,7 +85,7 @@ function offset(fixed,cover,motion,moving) {
     }
     // Delivery transfer below the plane is visible between printing elements.
     if(index<3){
-      roller(motion,x+.51,line-.284,0,.254,1.05,p.hardened,moving,1,true);
+      roller(motion,x+.5,line-ri,0,ri,1.05,p.hardened,moving,1,true);
       bar(fixed,[x+.22,.877,-.564],[x+.66,.888,-.564],.026,p.cast);
     }
     // Real inking stations have opaque trays. A thin margin of ink is visible along the lip.
@@ -110,7 +118,7 @@ function offset(fixed,cover,motion,moving) {
   safetyLabel(cover,2.61,1.608,.685,.105);
   cabinet(cover,2.27,1.51,.635,.16,.286,.112,p.blueGray,.006);
   controlPanel(cover,2.27,1.56,.725);
-  return {suction};
+  return {suction,lays};
 }
 
 function endRail(fixed,x,span,z) {
@@ -471,12 +479,14 @@ export function buildStation(parent,kind) {
     pack(parts.pins);pack(parts.nearPins);
     parts.pins.add(parts.nearPins);
   }
-  function animate(tLocal,{press=0,travel=tLocal*.28,cutaway=0,feeder:pick=0,stripping=0}={}) {
+  if(parts.lays)pack(parts.lays);
+  function animate(tLocal,{press=0,travel=tLocal*.28,cutaway=0,feeder:pick=0,stripping=0,lay=0}={}) {
+    if(parts.lays)parts.lays.position.y=-.03*lay;
     cover.visible=cutaway<.5;
     for(const {carrier,radius,sign} of moving)carrier.rotation.z=sign*travel/radius;
     if(parts.suction) {
       parts.suction.position.y=pick*.032;
-      parts.suction.position.x=(kind==='offset'?-3.37:-2.27)+pick*.046;
+      parts.suction.position.x=(kind==='offset'?offsetLayout.feederX-.22:-2.27)+pick*.046;
     }
     if(parts.platen)parts.platen.position.y=press*.044;
     if(parts.pins) {
