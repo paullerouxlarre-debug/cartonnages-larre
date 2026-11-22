@@ -21,7 +21,8 @@ export const lidDepth = .0737;
 export const tuckLength = .0103;
 export const dustDepth = .053;
 const half = length / 2;
-const rootClear = .00070;
+// The tuck tongue slides between the front wall and the shoulders of both dust flaps.
+const dustClear = .0032;
 let library;
 
 function flapType(panel, end) {
@@ -35,9 +36,9 @@ export function flapPieces(panel, end) {
   const w = faces[panel].width;
   if (!type) return null;
   if (type === 'dust') {
-    return {type, outline:[[rootClear,0],[.0011,.006],[.0051,dustDepth-.010],
+    return {type, outline:[[dustClear,0],[.0036,.006],[.0061,dustDepth-.010],
       [.014,dustDepth-.0024],[.018,dustDepth],[w-.016,dustDepth-.0021],
-      [w-.008,dustDepth-.011],[w-.002,dustDepth*.44],[w-rootClear,0]]};
+      [w-.008,dustDepth-.011],[w-.0045,dustDepth*.44],[w-dustClear,0]]};
   }
   const shoulder = .0051;
   const a = [.00085,0], b = [.0011,lidDepth-.0024], c = [shoulder,lidDepth];
@@ -53,7 +54,7 @@ export function flapPieces(panel, end) {
 // This is the shared contour for the physical blank, the stripping grid and the cutting rules.
 export function blankOutline() {
   function edge(end) {
-    const pts = [[-side-tab, end*(half-.011)],[-side, end*(half-thickness*1.7)]];
+    const pts = [[-side-tab, end*(half-.012)],[-side, end*(half-.0035)]];
     faces.forEach(({z,width},i) => {
       const flap=flapPieces(i,end);
       const baseline=half-(flap?.type==='dust'?thickness*1.7:0);
@@ -258,24 +259,26 @@ function textureLibrary() {
 export function materials() { return textureLibrary(); }
 
 export function sheetMaterial() {
-  const material=textureLibrary().plainSheet.clone(), ink={value:1};
+  const material=textureLibrary().plainSheet.clone(),ink={value:1};
+  const leadingEdges={value:new T.Vector4()},atContact={value:0};
   material.onBeforeCompile=shader=>{
-    shader.uniforms.inkCoverage=ink;
-    shader.fragmentShader='uniform float inkCoverage;\n'+shader.fragmentShader.replace(
-      '#include <map_fragment>',
-      [
+    Object.assign(shader.uniforms,{inkCoverage:ink,inkFronts:leadingEdges,inkAtContact:atContact});
+    shader.fragmentShader='uniform float inkCoverage,inkAtContact; uniform vec4 inkFronts;\n'+shader.fragmentShader.replace(
+      '#include <map_fragment>',[
         'vec3 substrate=vec3(0.90466,0.87962,0.79130);',
         'vec3 whole=texture2D(map, vMapUv).rgb;',
         'vec3 reflectance=clamp(whole/substrate,vec3(.001),vec3(1.0));',
         'float black=1.0-max(max(reflectance.r,reflectance.g),reflectance.b);',
         'vec3 cmys=1.0-reflectance/max(.001,1.0-black);',
-        'vec3 amounts=clamp(inkCoverage*4.0-vec3(0.,1.,2.),0.,1.);',
-        'float key=clamp(inkCoverage*4.0-3.0,0.0,1.0);',
-        'diffuseColor.rgb *= substrate*(1.0-amounts*cmys)*(1.0-key*black);'
+        'vec4 flatInk=clamp(inkCoverage*4.0-vec4(0.,1.,2.,3.),0.,1.);',
+        'float width=max(.00042,fwidth(vMapUv.y)*.58);',
+        'vec4 passes=smoothstep(inkFronts-vec4(width),inkFronts+vec4(width),vec4(vMapUv.y));',
+        'vec4 transfer=mix(flatInk,passes,inkAtContact);',
+        'diffuseColor.rgb *= substrate*(1.0-transfer.rgb*cmys)*(1.0-transfer.a*black);'
       ].join('\n'));
   };
-  material.customProgramCacheKey=()=>'larre-offset-cmyk';
-  return {material,ink};
+  material.customProgramCacheKey=()=>'larre-offset-nip-cmyk';
+  return {material,ink,leadingEdges,atContact};
 }
 
 export const blankUV = (z,x) => [.5+z/blankSize.z,.5+x/blankSize.x];

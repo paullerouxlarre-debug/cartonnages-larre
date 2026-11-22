@@ -1,4 +1,5 @@
 import * as T from '../assets/vendor/three.module.min.js';
+import {glueTrack} from './colle.js';
 import {
   stock, pressFormat, imposePositions, blankSize, faces, zCenter, lidDepth,
   flapPieces, blankOutline, blankUV, sheetUV, materials, board, boardGeometry, wallGeometry, sheetMaterial
@@ -8,7 +9,8 @@ export {stock, pressFormat, imposePositions, blankSize, blankOutline};
 export const units = [-9.6,-7.55,-5.5,-3.45];
 const {front,side,length,tab,thickness}=stock;
 const half=length/2;
-const gutter=.00032;
+// The score needs more relief than one board caliper for a full return fold.
+const gutter=.00092;
 const saturate=x=>Math.max(0,Math.min(1,x));
 const lerp=(a,b,t)=>a+(b-a)*t;
 const smooth=(a,b,x)=>{const t=saturate((x-a)/(b-a));return t*t*(3-2*t);};
@@ -16,11 +18,87 @@ const group=parent=>{const g=new T.Group();parent.add(g);return g;};
 const rect=(z0,x0,z1,x1)=>[[z0,x0],[z1,x0],[z1,x1],[z0,x1]];
 let fullSheet, flatBlank, stripGrid;
 
-export function makePressSheet(parent) {
-  const pivot=group(parent),{material,ink}=sheetMaterial();
-  fullSheet ||=boardGeometry(rect(-pressFormat.z/2,-pressFormat.x/2,pressFormat.z/2,pressFormat.x/2),sheetUV);
-  board(pivot,fullSheet,material);
-  return {pivot,setInk(value){ink.value=saturate(value);}};
+// A running sheet bends along the feed direction. The top, reverse and cut edges share
+// the same moving centreline, keeping the board caliper through every cylinder handoff.
+function runningSheet(parent,material) {
+  const segments=92,perRow=12,wide=pressFormat.z/2,caliper=stock.thickness;
+  const count=(segments+1)*perRow,positions=new Float32Array(count*3);
+  const normals=new Float32Array(count*3),uv=new Float32Array(count*2);
+  const indices=[],geo=new T.BufferGeometry();
+  const laneZ=[-wide,wide,-wide,wide,-wide,-wide,wide,wide,-wide,wide,-wide,wide];
+  const below=[0,0,-caliper,-caliper,0,-caliper,0,-caliper,0,0,-caliper,-caliper];
+  for(let row=0;row<=segments;row++) {
+    const u=row/segments;
+    for(let i=0;i<perRow;i++) {
+      const q=(row*perRow+i)*2;
+      uv[q]=i<4?(.5+laneZ[i]/pressFormat.z):u*pressFormat.x/.016;
+      uv[q+1]=i<4?u:below[i]/-caliper;
+    }
+  }
+  function strip(a,b,reverse) {
+    for(let row=0;row<segments;row++) {
+      const l=row*perRow+a,r=row*perRow+b,ln=l+perRow,rn=r+perRow;
+      if(reverse)indices.push(l,ln,r,r,ln,rn);else indices.push(l,r,ln,r,rn,ln);
+    }
+  }
+  strip(0,1,false);geo.addGroup(0,indices.length,0);
+  const reverseStart=indices.length;
+  strip(2,3,true);geo.addGroup(reverseStart,indices.length-reverseStart,1);
+  const sideStart=indices.length;
+  strip(4,5,true);strip(6,7,false);
+  for(const row of [0,segments]){
+    const q=row*perRow+8;
+    if(row===0)indices.push(q,q+2,q+1,q+1,q+2,q+3);
+    else indices.push(q,q+1,q+2,q+1,q+3,q+2);
+  }
+  geo.addGroup(sideStart,indices.length-sideStart,2);
+  const pos=new T.BufferAttribute(positions,3).setUsage(T.DynamicDrawUsage);
+  const nor=new T.BufferAttribute(normals,3).setUsage(T.DynamicDrawUsage);
+  geo.setAttribute('position',pos);geo.setAttribute('normal',nor);
+  geo.setAttribute('uv',new T.BufferAttribute(uv,2));geo.setIndex(indices);
+  const surface=board(parent,geo,material);
+  surface.frustumCulled=false;
+  const station={x:0,y:0,z:0,dx:1,dy:0,skew:0};
+  return function conform(sample) {
+    for(let row=0;row<=segments;row++){
+      sample(row/segments,station);
+      const {x,y,z,dx,dy,skew}=station;
+      const inv=1/Math.hypot(dx,dy),nx=-dy*inv,ny=dx*inv;
+      const end=row===0?-1:1;
+      for(let i=0;i<perRow;i++){
+        const at=(row*perRow+i)*3,side=i<6?-1:1;
+        positions[at]=x+nx*below[i]-laneZ[i]*skew;
+        positions[at+1]=y+ny*below[i];
+        positions[at+2]=z+laneZ[i];
+        if(i<4) {
+          const skin=i<2?1:-1;
+          normals[at]=skin*nx;normals[at+1]=skin*ny;normals[at+2]=skin*nx*skew;
+        }else if(i<8){
+          normals[at]=-skew*side;normals[at+1]=0;normals[at+2]=side;
+        }else{
+          normals[at]=end*dx*inv;normals[at+1]=end*dy*inv;normals[at+2]=end*skew;
+        }
+      }
+    }
+    pos.needsUpdate=true;nor.needsUpdate=true;
+  };
+}
+
+export function makePressSheet(parent,{flexible=false}={}) {
+  const pivot=group(parent),{material,ink,leadingEdges,atContact}=sheetMaterial();
+  let conform;
+  if(flexible) {
+    conform=runningSheet(pivot,material);
+  }else{
+    fullSheet ||=boardGeometry(rect(-pressFormat.z/2,-pressFormat.x/2,pressFormat.z/2,pressFormat.x/2),sheetUV);
+    board(pivot,fullSheet,material);
+  }
+  return {pivot,conform,setInk(value){atContact.value=0;ink.value=saturate(value);},
+    setContact(distance,nips){
+      atContact.value=1;
+      leadingEdges.value.set(...nips.map(contact=>1-(distance-contact)/pressFormat.x));
+    }
+  };
 }
 
 function flatGeometry() {
@@ -30,22 +108,67 @@ function flatGeometry() {
 
 // Four cut poses remain supported while the waste frame moves below the sheet.
 export function makeStrippedSheet(parent) {
-  const pivot=group(parent),m=materials(),shape=blankOutline(),poses=[];
-  for(const {x,z} of imposePositions) {
+  const pivot=group(parent), waste=group(pivot), m=materials(), outline=blankOutline();
+  const poses=imposePositions.map(({x,z})=>{
     const blank=board(pivot,flatGeometry(),m.outer);
-    blank.position.set(x,0,z);poses.push(blank);
+    blank.position.set(x,0,z);
+    return blank;
+  });
+  // The gripper margin and the narrow webs stay on the chain until blanking.
+  // The two pieces between the end flaps and the side trims drop at stripping.
+  if (!stripGrid) {
+    const xMax=pressFormat.x/2, zMax=pressFormat.z/2, frameSide=.472;
+    const blankZ=blankSize.z/2, blankX=blankSize.x/2+.00070, kerf=.00010;
+    const windows=[], offcuts=[];
+    function piece(points, x, z, end, side) {
+      const local=points.map(([u,v])=>[u-z,v-x]);
+      const geom=boardGeometry(local,(u,v)=>sheetUV(u+z,v+x));
+      offcuts.push({geom,x,z,end,side});
+    }
+    for(const {x,z} of imposePositions) {
+      windows.push(rect(z-blankZ-kerf,x-blankX-kerf,z+blankZ+kerf,x+blankX+kerf));
+      for(const end of [-1,1]) {
+        // Each half of the common contour runs monotonically from one side
+        // of the blank to the other. Leave room for the actual steel-rule kerf.
+        const edge=outline.filter(([,v])=>Math.sign(v)===end)
+          .map(([u,v])=>[z+u,x+v+end*kerf]);
+        const rise=x+end*blankX;
+        const contour=[...edge,[edge[edge.length-1][0],rise],[edge[0][0],rise]];
+        piece(contour,x+end*.147,z,end,0);
+      }
+    }
+    for(const side of [-1,1]) {
+      const za=side<0?-zMax:frameSide+kerf, zb=side<0?-frameSide-kerf:zMax;
+      for(const end of [-1,1]) {
+        const xa=end<0?-xMax:kerf, xb=end<0?-kerf:xMax;
+        piece(rect(za,xa,zb,xb),(xa+xb)/2,(za+zb)/2,end,side);
+      }
+    }
+    stripGrid={
+      carrier:boardGeometry(rect(-frameSide,-xMax,frameSide,xMax),sheetUV,thickness,windows),
+      offcuts
+    };
   }
-  if(!stripGrid) {
-    // Die clearance is finite. There are no coincident scraps covering the printed faces.
-    const holes=imposePositions.map(({x,z})=>shape.map(([u,v])=>[z+u*1.00062,x+v*1.00062]));
-    stripGrid=boardGeometry(rect(-pressFormat.z/2,-pressFormat.x/2,pressFormat.z/2,pressFormat.x/2),
-      sheetUV,thickness,holes);
+  const carrier=board(pivot,stripGrid.carrier,m.plainSheet);
+  const pieces=stripGrid.offcuts.map(({geom,x,z,end,side})=>({
+    mesh:board(waste,geom,m.plainSheet),x,z,end,side
+  }));
+  function setSeparation(progress) {
+    pieces.forEach(({mesh,x,z,end,side},index)=>{
+      // Pins move the waste through the female tool first. Only after it
+      // clears the board does the free clipping tip, drift and settle.
+      const push=saturate(progress/.22);
+      const free=saturate((progress-.22)/.78), delay=(index%3)*.02;
+      const falling=saturate((free-delay)/(1-delay));
+      const drop=.031*push+.599*falling*falling;
+      const flight=Math.sin(Math.PI*falling);
+      const sign=side||Math.sign(z);
+      mesh.position.set(x+end*.013*falling, -drop+.00052*(index%3)*falling, z+sign*.008*falling);
+      mesh.rotation.set(sign*.104*flight, end*(.027*flight+.016*falling), end*.158*flight);
+    });
   }
-  const waste=board(pivot,stripGrid,m.plainSheet);
-  return {pivot,poses,waste,setSeparation(value){
-    const u=saturate(value);waste.position.set(-.014*u,-.185*u,.006*u);
-    waste.rotation.z=-.095*u;waste.visible=u<1;
-  }};
+  setSeparation(0);
+  return {pivot,poses,waste,carrier,setSeparation};
 }
 
 // A pallet may hold hundreds of identical poses. One layered edge per lift suffices.
@@ -174,7 +297,7 @@ function flap(parent,panel,end,outer) {
   if(data.type==='dust') {
     const shape=data.outline.map(local);
     board(hinge,boardGeometry(shape,uv),outer);
-    return {end,hinge,bend};
+    return {panel,end,hinge,bend};
   }
   const deck=data.deck.map(([u,v])=>[u,end*Math.min(lidDepth-gutter,Math.max(gutter,v))]);
   board(hinge,boardGeometry(deck,uv),outer);
@@ -183,7 +306,7 @@ function flap(parent,panel,end,outer) {
   board(tuck,boardGeometry(tongue,(u,v)=>uv(u,tuck.position.x+v)),outer);
   const tuckBend=endScore(hinge,outer,data.tongue[0][0],data.tongue[data.tongue.length-1][0],
     tuck.position.x,end,uv);
-  return {end,hinge,tuck,bend,tuckBend};
+  return {panel,end,hinge,tuck,bend,tuckBend};
 }
 
 export function makeCarton(parent) {
@@ -203,26 +326,25 @@ export function makeCarton(parent) {
     }
     panels.push(holder);
   }
-  const adhesive=group(centre),tabShape=[[-tab,-half+.011],[-gutter,-half],
-    [-gutter,half],[-tab,half-.011]];
+  const adhesive=group(centre),tabShape=[[-tab,-half+.012],[-gutter,-half+.0035],
+    [-gutter,half-.0035],[-tab,half-.012]];
   board(adhesive,boardGeometry(tabShape,(u,v)=>blankUV(u-side-zCenter,v)),m.outer);
 
-  const glueMaterial=new T.MeshPhysicalMaterial({color:0xe3d9ae,roughness:.2,metalness:0,
-    clearcoat:.55,clearcoatRoughness:.21});
-  const bead=new T.Mesh(new T.SphereGeometry(1,12,6),glueMaterial);adhesive.add(bead);
-  bead.castShadow=true;
+  const deposit=glueTrack(adhesive,stock);
   const hinges=[
-    scoredHinge(centre,adhesive,panels[0],-gutter,gutter,-side,half-.0006),
-    scoredHinge(centre,panels[0],panels[1],side-gutter,gutter,0,half-.00015),
-    scoredHinge(centre,panels[1],panels[2],front-gutter,gutter,front,half-.00015),
-    scoredHinge(centre,panels[2],panels[3],side-gutter,gutter,front+side,half-.00015)
+    scoredHinge(centre,adhesive,panels[0],-gutter,gutter,-side,half-.0035),
+    scoredHinge(centre,panels[0],panels[1],side-gutter,gutter,0,half-thickness*1.7),
+    scoredHinge(centre,panels[1],panels[2],front-gutter,gutter,front,half-thickness*1.7),
+    scoredHinge(centre,panels[2],panels[3],side-gutter,gutter,front+side,half-thickness*1.7)
   ];
   function place(node,z,y,angle){node.position.set(0,y,z);node.rotation.x=angle;}
-  function pose({x=0,y=0,z=0,roll=0,yaw=0,rise=0,foldLeft=0,foldBack=0,open=0,close=0,glue=0}={}) {
-    const left=saturate(foldLeft),back=saturate(foldBack),widthOpen=saturate(open),shut=saturate(close);
+  function pose({x=0,y=0,z=0,roll=0,yaw=0,rise=0,foldLeft=0,foldBack=0,open=0,close=0,
+    closeTop=close,closeBottom=close,glue=0}={}) {
+    const left=saturate(foldLeft),back=saturate(foldBack),widthOpen=saturate(open);
     const la=-Math.PI*left+Math.PI*.5*widthOpen,ra=Math.PI*.5*widthOpen;
     const base=-2.18*thickness*left*(1-widthOpen);
-    const ry=-side*Math.sin(ra)-4.36*thickness*back*(1-widthOpen);
+    // The back skin rides one board thickness plus the thin glue joint below the tab.
+    const ry=-side*Math.sin(ra)-3.32*thickness*back*(1-widthOpen);
     const rz=front+side*Math.cos(ra);
     const lz=-side*Math.cos(la),ly=base+side*Math.sin(la);
     pivot.position.set(x,y,z);pivot.rotation.set(0,yaw,rise,'YXZ');
@@ -236,16 +358,15 @@ export function makeCarton(parent) {
     place(panels[3],rz,ry,Math.PI*back);
     place(adhesive,lz,ly+widthOpen*thickness*1.14,la-Math.PI*.5*widthOpen);
     walls.forEach(wall=>{wall.morphTargetInfluences[0]=widthOpen;});
-    const amount=saturate(glue),span=length*.87*.5;
-    bead.visible=amount>.002 && back<.91;
-    bead.position.set(-span+span*amount,-thickness-.00010,-tab*.52);
-    bead.scale.set(Math.max(.00003,span*amount),.00020,.00125);
-    for(const {end,hinge,tuck,bend,tuckBend} of flaps) {
+    deposit(saturate(glue),back>.985);
+    for(const {panel,end,hinge,tuck,bend,tuckBend} of flaps) {
+      const shut=saturate(end>0?closeTop:closeBottom);
       if(!tuck) {
-        hinge.rotation.z=-end*Math.PI*.5*smooth(0,.63,shut);
+        const delay=panel===0?0:.065;
+        hinge.rotation.z=-end*Math.PI*.5*smooth(delay,.42+delay,shut);
       } else {
-        hinge.rotation.z=-end*Math.PI*.5*smooth(.23,1,shut);
-        tuck.rotation.z=-end*(Math.PI*.5)*smooth(.12,.87,shut);
+        hinge.rotation.z=-end*Math.PI*.5*smooth(.48,1,shut);
+        tuck.rotation.z=-end*Math.PI*.5*smooth(.40,.85,shut);
         tuckBend(tuck.rotation.z);
       }
       bend(hinge.rotation.z);

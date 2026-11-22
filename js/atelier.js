@@ -200,27 +200,47 @@ function diecutter(fixed,cover,motion) {
   }
   for(const z of [-.59,.59]){
     const upper=z<0?fixed:cover;
-    box(fixed,.557,.675,z,.93,.64,.080,p.gray);
+    box(upper,.557,.675,z,.93,.64,.080,p.gray);
     cabinet(upper,.528,1.91,z,.944,.247,.104,p.pearl,.014);
     for(const xx of [.140,1.0]) {
       cabinet(upper,xx,1.54,z,.074,.59,.080,p.blueGray,.003);
       bolt(upper,xx,1.81,z+.044,.009);
     }
   }
-  // In the stripping unit, upper and lower tools meet the offcuts while the grippers keep the sheet.
+  // A sectional view removes the near cover but retains the narrow steel comb.
+  // Every visible pin is attached to this carriage, including its walk-side row.
   const pins=group(motion,.55,0,0),nearPins=group(pins);
-  splitDepth(pins,nearPins,0,1.51,.766,.037,1.069,p.ply);
+  splitDepth(pins,nearPins,0,1.471,.786,.030,1.060,p.ply);
   for(const dx of [-.238,.238]) {
-    cylinder(pins,dx,1.545,-.327,.038,.032,p.aluminum,'y');
-    cylinder(pins,dx,1.623,-.327,.019,.147,p.steel,'y');
+    cylinder(pins,dx,1.501,-.327,.036,.032,p.aluminum,'y');
+    cylinder(pins,dx,1.600,-.327,.019,.175,p.steel,'y');
     cylinder(fixed,.55+dx,1.742,-.327,.036,.199,p.cast,'y');
     cabinet(fixed,.55+dx,1.828,-.444,.095,.046,.273,p.blueGray,.003);
   }
-  for(const dx of [-.32,-.18,0,.18,.32])for(const z of [-.462,0,.462])
-    cylinder(z>0?nearPins:pins,dx,1.389,z,.005,.208,p.hardened,'y');
+  const rows=new Map();
+  function punch(x,z) {
+    if(!rows.has(x)) {
+      rows.set(x,true);
+      box(pins,x,1.444,0,.028,.023,1.028,p.hardened);
+    }
+    cylinder(pins,x,1.425,z,.009,.017,p.aluminum,'y');
+    // At maximum travel the tip is 31 mm below the sheet. The cylinder's
+    // upper end meets the same sleeve throughout the complete 121 mm stroke.
+    cylinder(pins,x,1.3565,z,.0055,.121,p.steel,'y');
+    cylinder(pins,x,1.275,z,.0038,.050,p.hardened,'y');
+  }
+  for(const {x,z} of carton.imposePositions) {
+    punch(x-.147,z+.147);
+    punch(x+.147,z-.063);
+    // These shoes sit entirely under the material left in a finished pose.
+    cabinet(fixed,.55+x,1.149,z,.109,.020,.124,p.hardened,.0008);
+    cylinder(fixed,.55+x,.784,z,.014,.708,p.steel,'y');
+    cylinder(fixed,.55+x,1.126,z,.031,.027,p.aluminum,'y');
+  }
+  for(const z of [-.489,.489])for(const x of [-.207,.207])punch(x,z);
   for(const xx of [.13,1.01])for(const z of [-.54,.54])
     cylinder(z<0?fixed:cover,xx,1.379,z,.020,.456,p.steel,'y');
-  cabinet(fixed,.55,1.065,-.47,.80,.052,.101,p.hardened,.002);
+  cabinet(fixed,.55,1.065,-.538,.80,.044,.036,p.hardened,.002);
   for(const z of [-.547,.547]) {
     box(fixed,1.657,.673,z,.054,1.075,.046,p.aluminum);
     box(fixed,1.668,1.28,z,1.041,.075,.064,p.blueGray);
@@ -391,7 +411,7 @@ function gluer(fixed,cover,motion,moving) {
   cylinder(fixed,-.947,1.289,.234,.016,.058,p.aluminum,'y');
   bar(fixed,[-.947,1.268,.234],[-.947,1.193,.215],.007,p.steel);
   cylinder(fixed,-.947,1.184,.215,.005,.018,p.brass,'y');
-  const nozzle=mesh(fixed,new T.CylinderGeometry(.005,.0018,.012,14),p.steel,-.947,1.169,.215);
+  const nozzle=mesh(fixed,new T.CylinderGeometry(.005,.0018,.012,14),p.steel,-.947,1.172,.21536);
   nozzle.castShadow=true;
   cylinder(fixed,-.947,1.347,.327,.011,.188,p.steel);
   box(fixed,-.947,1.329,.414,.051,.050,.039,p.aluminum);

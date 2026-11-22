@@ -4,6 +4,7 @@ import {makePressSheet,makeStrippedSheet,makeBlankPile,makeCarton} from './etui.
 import {buildStation} from './atelier.js';
 import {box,group,ease,mix} from './matiere.js';
 import {loadingProps} from './logistique.js';
+import {applicator,depositAt,glueValve} from './colle.js';
 
 const duration=52, paperY=1.16;
 const vector=(x,y,z)=>new T.Vector3(x,y,z);
@@ -24,6 +25,12 @@ function packingTable(g,props,x=0) {
   for(const dx of [-.74,.74])for(const dz of [-.34,.34])box(g,x+dx,.439,dz,.043,.878,.043,metal);
 }
 function stockAtDelivery(props,g,x) {return props.sheetLoad(g,x,true,1.093);}
+
+function unpackingPosition(s){
+  const shift=ease(1.14,2.56,s);
+  const y=benchHeight+.216+.340*ease(0,1.14,s)-.4558*ease(3.90,5.06,s);
+  return {x:mix(.48,-.09,shift),y,z:mix(-.29,.08,shift)};
+}
 
 function stationSet(scene,id,props) {
   const root=group(scene);
@@ -67,33 +74,47 @@ function stationSet(scene,id,props) {
     const pile=makeBlankPile(root,{count:160});
     pile.pivot.rotation.x=Math.PI;pile.pivot.position.set(-2.65,paperY+pile.height+.001,0);
     const carton=makeCarton(root);
-    const shingle=Array.from({length:7},()=>makeCarton(root));
+    const shingle=Array.from({length:15},()=>makeCarton(root));
+    const valve=glueValve(root,paperY+.0012+.00048+.00065);
     update=t=>{
       const s=t-26;
-      const x=s<3?mix(-2.65,-1.42,ease(.8,3,s)):s<6?mix(-1.42,-.37,(s-3)/3):s<10?mix(-.37,1.85,(s-6)/4):mix(1.85,2.80,(s-10)/2);
-      carton.pose({x,y:paperY+.0012,z:0,roll:Math.PI,foldLeft:ease(-.73,.30,x),foldBack:ease(.29,1.43,x),open:0,close:0,glue:ease(-1.11,-.77,x)});
+      let x;
+      if(s<3) x=mix(-2.65,-1.060,ease(.8,3,s));
+      else if(s<5.52) x=mix(-1.060,-.831,(s-3)/2.52);
+      else if(s<6.1) x=mix(-.831,-.55,(s-5.52)/.58);
+      else if(s<10) x=mix(-.55,1.85,(s-6.1)/3.9);
+      else x=mix(1.85,2.80,(s-10)/2);
+      const incline=along=>.046*ease(1.82,2.07,along);
+      const surface=angle=>paperY+.0012+.183*Math.sin(angle);
+      const angle=incline(x);
+      carton.pose({x,y:surface(angle),z:0,roll:Math.PI,rise:angle,foldLeft:ease(-.73,.30,x),foldBack:ease(.29,1.43,x),open:0,close:0,glue:depositAt(x)});
+      valve(x);
       shingle.forEach((next,i)=>{
-        next.pivot.visible=s>=9.6;
-        if(next.pivot.visible) folded(next,2.12+i*.085+((s-9.6)*.085)%.085,paperY+.002+(7-i)*.0018,0);
+        const lead=x+(i+1)*.091;
+        next.pivot.visible=lead>1.92 && lead<3.80 && s>8;
+        if(next.pivot.visible) folded(next,lead,surface(incline(lead)),0,{rise:incline(lead)});
       });
       machine.animate(s,{press:0,travel:x+2.65,cutaway:s>2.5?1:0,feeder:0});
     };
   }else if(id===3){
-    packingTable(root,props);
-    const pack=props.crate(root,0,benchHeight,0), carton=makeCarton(root);
-    for(let i=0;i<11;i++) {
-      const sample=makeCarton(root);
-      folded(sample,0,benchHeight+.017+i*.002,0);
+    const table=group(root);
+    packingTable(table,props);
+    const pack=props.crate(table,0,benchHeight,0), carton=makeCarton(table);
+    for(let i=0;i<16;i++) {
+      const sample=makeCarton(table);
+      folded(sample,0,benchHeight+.007+i*.0034,0);
     }
-    const van=props.vehicle(root);van.position.z=-4;
-    box(root,-2.86,1.073,-4,1.50,.065,2.23,metal);
-    for(const z of [-4.72,-3.28])box(root,-2.86,.79,z,1.38,.35,.085,metal);
-    const load=props.pallet(root,-3.2,-4);
-    for(let j=0;j<2;j++)for(const x of [-.245,.245])for(const z of [-.245,.245])props.crate(load,x,.147+j*.26,z,false);
+    const dock=group(root);
+    const van=props.vehicle(dock);van.position.z=-4;
+    box(dock,-2.86,1.073,-4,1.50,.065,2.23,metal);
+    for(const z of [-4.72,-3.28])box(dock,-2.86,.79,z,1.38,.35,.085,metal);
+    const load=props.pallet(dock,-3.2,-4);
+    for(let j=0;j<2;j++)for(const x of [-.25,.25])for(const z of [-.25,.25])props.crate(load,x,.147+j*.27,z,false);
     update=t=>{
-      const s=t-38,placing=ease(0,2.45,s),loading=ease(4.3,6.95,s);
-      folded(carton,0,mix(benchHeight+.40,benchHeight+.042,placing),mix(.12,0,placing));
-      pack.close(ease(2.3,3.8,s));
+      const s=t-38,placing=ease(0,1.38,s),loading=ease(4.3,6.95,s);
+      table.visible=t<42;dock.visible=!table.visible;
+      folded(carton,0,mix(benchHeight+.40,benchHeight+.0614,placing),mix(.012,0,placing));
+      pack.close(ease(1.42,3.91,s));
       load.position.set(mix(-3.20,-1.05,loading),1.106,-4);
       van.position.x=ease(6.2,7,s)*.21;
     };
@@ -104,9 +125,10 @@ function stationSet(scene,id,props) {
     props.crate(root,.48,benchHeight,-.29);
     const carton=makeCarton(root);
     update=(t,turn)=>{
-      const s=t-45,lift=ease(.35,2.6,s),open=ease(2.15,4.45,s),shut=ease(4.4,6.1,s);
-      carton.pose({x:mix(.47,-.09,lift),y:mix(benchHeight+.226,benchHeight+.1001,lift)+.145*Math.sin(lift*Math.PI),
-        z:mix(-.29,.08,lift),rise:lift*Math.PI/2,yaw:-.24+turn,foldLeft:1,foldBack:1,glue:1,open,close:shut});
+      const s=t-45, position=unpackingPosition(s);
+      carton.pose({...position,rise:ease(1.63,2.72,s)*Math.PI/2,yaw:-.24+turn,
+        foldLeft:1,foldBack:1,glue:1,open:ease(2.25,3.68,s),
+        closeBottom:ease(3.65,4.65,s),closeTop:ease(5.07,6.62,s)});
     };
   }
   return {root,update};
@@ -125,10 +147,10 @@ const shots=[
   [21,1,[.56,1.115,.02],[.12,.69,.81],1.13,1.08],
   [23.6,1,[1.65,.41,0],[1,.72,.32],1.43,1.36],
   [26,2,[-2.60,1.20,0],[-.51,.38,.70],1.12,.87],
-  [29,2,[-.96,1.175,.15],[.23,.29,.49],.63,.54],
+  [29,2,[applicator.x,1.168,applicator.z],[.29,.70,.60],.158,.138],
   [32,2,[.36,1.19,.05],[.24,.58,.74],.87,.94],
   [36,2,[2.31,1.16,.01],[.41,.41,.74],1.05,.91],
-  [38,3,[0,1.115,0],[-.39,.43,.55],1.01,.88],
+  [38,3,[0,1.105,0],[-.37,.86,.58],1.42,1.27],
   [42,3,[-2.12,1.6,-4],[-2.25,.6,.36],4.36,4.74],
   [45,4,[.17,1.15,-.04],[-.35,.26,.43],.85,.68],
   [47.6,4,[-.09,1.017,.08],[-.34,.16,.29],.53,.445]
@@ -204,7 +226,10 @@ export async function atelierRenderer(canvas) {
     if(k===8)aim.x+=ease(22.3,23.6,t)*.48;
     if(k===12)aim.x=mix(-.20,1.28,v);
     if(k===13)aim.x=mix(1.92,2.69,v);
-    if(k===16)aim.x=mix(.33,-.018,v);
+    if(id===4){
+      const {x,y,z}=unpackingPosition(t-45);
+      aim.set(x,y+.012,z);
+    }
     let distance=mix(from,to,v)*(vertical?1.20:1);
     // Establish each freestanding machine before cutting in to its tool path.
     if((t>=4 && t<5.85)||(t>=14 && t<15.65)||(t>=26 && t<27.55)){

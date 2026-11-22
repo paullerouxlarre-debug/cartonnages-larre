@@ -1,5 +1,5 @@
 import * as T from '../assets/vendor/three.module.min.js';
-import {box, group, cylinder} from './matiere.js';
+import {box, group, cylinder, ease} from './matiere.js';
 import {makePressSheet,makeBlankPile} from './etui.js';
 
 const material=(color,roughness=.7,metalness=0)=>new T.MeshStandardMaterial({color,roughness,metalness});
@@ -84,23 +84,33 @@ export function loadingProps(woodMap) {
     const p=group(parent,x,y,z), a=.245,b=.237,h=.25,wall=.004;
     box(p,0,.002,0,2*a,wall,2*b,cardboard);
     for(const s of [-1,1]){
-      box(p,s*a,h/2,0,wall,h,2*b,cardboard);
-      box(p,0,h/2,s*b,2*a-wall,h,wall,liner);
+      box(p,s*a,h/2,0,wall,h,2*b-wall,cardboard);
+      box(p,0,h/2,s*b,2*a+wall,h,wall,liner);
     }
     const sticker=new T.Mesh(new T.PlaneGeometry(.118,.069),label);
     sticker.position.set(-.090,.13,b+.0023);p.add(sticker);
     const sideTag=sticker.clone();sideTag.rotation.y=-Math.PI/2;sideTag.position.set(-a-.0023,.13,.024);p.add(sideTag);
+    // The inner pair seats below the outer pair, with clearance for board thickness.
     const flaps=[];
-    for(const s of [-1,1]) {
-      const minor=group(p,s*a,h,0),major=group(p,0,h+wall,s*b);
-      box(minor,-s*.092,0,0,.184,wall,2*b-.004,cardboard);
-      box(major,0,0,-s*(b-.003)/2,2*a-.003,wall,b-.003,liner);
-      flaps.push([minor,'z',s],[major,'x',-s]);
+    for(const sign of [-1,1]) {
+      const inner=group(p,sign*a,h+.001,0);
+      const outer=group(p,0,h+wall+.0025,sign*b);
+      box(inner,-sign*.092,0,0,.184,wall,2*b-.012,cardboard);
+      box(outer,0,0,-sign*(b-.0012)/2,2*a-.006,wall,b-.0012,liner);
+      flaps.push({inner,outer,sign});
     }
-    const seam=box(p,0,h+.0072,0,2*a,.0014,.038,tape);
+    const seam=box(p,0,h+wall+.0025+wall/2+.00055,0,1,.001,.036,tape);
     const close=u=>{
-      for(const [f,axis,s] of flaps)f.rotation[axis]=-s*(2.5*(1-u));
-      seam.visible=u>.994;
+      for(const {inner,outer,sign} of flaps){
+        const lag=sign>0?.045:0;
+        inner.rotation.z=-sign*2.42*(1-ease(lag,.40+lag,u));
+        outer.rotation.x=sign*2.42*(1-ease(.46+lag,.80+lag,u));
+      }
+      const seal=ease(.855,1,u);
+      const length=(2*a-.006)*seal;
+      seam.visible=length>.0001;
+      seam.scale.x=Math.max(.0001,length);
+      seam.position.x=-a+.003+length/2;
     };
     close(open?0:1);return {pivot:p,close};
   }
