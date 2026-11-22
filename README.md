@@ -34,7 +34,7 @@ Les plans de séparation des poses et de rabattement d’un étui à patte droit
 
 Les trois ateliers sont des reconstitutions indépendantes. La lumière du hall, le grain du bois et la texture du sol proviennent de ressources CC0 de Poly Haven. [Machine Shop 01, Sergej Majboroda](https://polyhaven.com/a/machine_shop_01) · [Wood Planks Grey, Rob Tuytel](https://polyhaven.com/a/wood_planks_grey) · [Concrete Floor 02, Rob Tuytel](https://polyhaven.com/a/concrete_floor_02)
 
-Pour régénérer les vidéos depuis le site servi en HTTP, utiliser Node avec Playwright et FFmpeg, puis lancer chacune des deux commandes. La variable facultative CHROME_BIN permet de choisir Chromium ou Chrome.
+La suite d’images défilée (12 images/s, 1600 × 945 et 860 × 892) se rend avec `node outils/rendre-suite.cjs URL DOSSIER --paysage|--portrait` ; les MP4 se recalculent ensuite avec FFmpeg à partir de cette suite. Pour régénérer les vidéos depuis le site servi en HTTP, utiliser Node avec Playwright et FFmpeg, puis lancer chacune des deux commandes. La variable facultative CHROME_BIN permet de choisir Chromium ou Chrome.
 
 ```sh
 node outils/rendre-film.cjs http://localhost:8080/ assets/film

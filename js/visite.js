@@ -96,7 +96,7 @@
       image.decoding = "async";
       image.onload = () => { inflight--; if (set === sequenceSet) { frames[i] = image; if (shown !== Math.round(time * fps)) drawSequence(); } pump(); };
       image.onerror = () => { inflight--; pump(); };
-      image.src = set + String(i + 1).padStart(3, "0") + ".webp?v=6";
+      image.src = set + String(i + 1).padStart(3, "0") + ".webp?v=7";
     }
   }
   function want(index) {
@@ -126,7 +126,7 @@
   }
 
   function framePath(name) {
-    return "assets/film/" + (portrait.matches ? "portrait/" : "") + name + ".webp?v=6";
+    return "assets/film/" + (portrait.matches ? "portrait/" : "") + name + ".webp?v=7";
   }
 
   function measure() {
