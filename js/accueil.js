@@ -1,5 +1,5 @@
 // Opening: the scroll position through #encre drives the 3D ink scene and its captions.
-// Also animates the large statements over the film. Reduced motion shows the finished box.
+// Reduced motion shows the finished box.
 const motion = matchMedia("(prefers-reduced-motion: reduce)");
 const section = document.getElementById("encre");
 const canvas = document.getElementById("encre-3d");
@@ -45,7 +45,7 @@ async function start() {
   }
   if (!scene && !failed) {
     try {
-      const {inkScene} = await import("./encre3d.js?v=3");
+      const {inkScene} = await import("./encre3d.js?v=4");
       scene = await inkScene(canvas);
       document.documentElement.classList.add("encre-prete");
     } catch (error) {
@@ -62,7 +62,6 @@ async function start() {
 const gallery = document.getElementById("galerie");
 const track = gallery.querySelector(".galerie-piste");
 const views = [...track.children];
-const film = document.getElementById("ecran");
 function slide() {
   if (motion.matches) { track.style.transform = ""; return; }
   const box = gallery.getBoundingClientRect();
@@ -80,5 +79,12 @@ addEventListener("resize", slide);
 slide();
 addEventListener("resize", () => { if (scene) scene.draw(motion.matches ? .97 : progress, performance.now() / 1000); schedule(); });
 motion.addEventListener("change", start);
-document.addEventListener("larre:temps", event => { film.style.setProperty("--film", (event.detail.time / 52).toFixed(4)); });
+// The box types draw themselves when their section arrives on screen.
+const range = document.getElementById("boites");
+if (range && "IntersectionObserver" in window) {
+  document.documentElement.classList.add("gamme-anim");
+  new IntersectionObserver((entries, watch) => {
+    if (entries.some(e => e.isIntersecting)) { range.classList.add("vu"); watch.disconnect(); }
+  }, {threshold: .18}).observe(range);
+}
 start();

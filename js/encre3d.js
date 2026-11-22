@@ -18,14 +18,23 @@ const SHEET_Y = .26;
 // The pose that becomes the box sits at the world origin.
 const HERO = 2;
 const TURN = 2.25;
-// Pour timing (p), impact point on the sheet (world x, z) and ink colour.
+// Press order: an optional Pantone, the four process inks, a second optional Pantone,
+// then a gloss varnish. Timing in p; impact point relative to the sheet centre (x, z).
+const C0 = [-imposePositions[HERO].x, -imposePositions[HERO].z];
 export const pours = [
-  {name: 'cyan', color: 0x0094c9, start: .055, at: [-.13, .19]},
-  {name: 'magenta', color: 0xd3166f, start: .125, at: [-.38, .52]},
-  {name: 'jaune', color: 0xf6c400, start: .195, at: [-.02, .54]},
-  {name: 'noir', color: 0x16191a, start: .265, at: [-.33, -.06]}
-];
-const FALL = .045, SPREAD = .135;
+  {name: 'pantone 1', color: 0xb5492c, start: .05, at: [.05, -.05]},
+  {name: 'noir', color: 0x16191a, start: .1, at: [-.16, -.30]},
+  {name: 'cyan', color: 0x0094c9, start: .15, at: [-.2, .28]},
+  {name: 'magenta', color: 0xd3166f, start: .2, at: [.15, .10]},
+  {name: 'jaune', color: 0xf6c400, start: .25, at: [.16, .30]},
+  {name: 'pantone 2', color: 0x1f4a3f, start: .3, at: [-.12, .02]},
+  {name: 'vernis', color: 0xffffff, start: .36, at: [0, .12], varnish: true}
+].map(p => ({...p, at: [C0[0] + p.at[0], C0[1] + p.at[1]]}));
+const FALL = .04, SPREAD = .12;
+// The print takes p ∈ [0, PRINT]; the rest of the scene keeps its own clock q ∈ [.445, 1].
+const PRINT = .52, Q0 = .445;
+const toQ = p => p < PRINT ? p * Q0 / PRINT : Q0 + (p - PRINT) * (1 - Q0) / (1 - PRINT);
+const toP = q => q < Q0 ? q * PRINT / Q0 : PRINT + (q - Q0) * (1 - PRINT) / (1 - Q0);
 // Découpe and stripping, then the folding of the hero pose.
 const CUT = [.445, .505], PRESS = [.505, .53], DROP = [.53, .6], AWAY = [.565, .64], SWAP = .615;
 
@@ -37,23 +46,38 @@ function inkedMaterial(base, reveal) {
     shader.uniforms.reveal = reveal;
     shader.vertexShader = 'varying vec3 vInkW;\n' + shader.vertexShader.replace('#include <project_vertex>',
       '#include <project_vertex>\nvInkW=(modelMatrix*vec4(transformed,1.0)).xyz;');
-    shader.fragmentShader = 'uniform vec4 reveal[4];\nvarying vec3 vInkW;\n' + shader.fragmentShader.replace('#include <map_fragment>', `
+    shader.fragmentShader = 'uniform vec4 reveal[7];\nvarying vec3 vInkW;\n' + shader.fragmentShader.replace('#include <map_fragment>', `
       vec3 substrate=vec3(0.90466,0.87962,0.79130);
       vec3 whole=texture2D(map, vMapUv).rgb;
       vec3 refl=clamp(whole/substrate,vec3(.001),vec3(1.));
       float black=1.-max(max(refl.r,refl.g),refl.b);
       vec3 cmy=1.-refl/max(.001,1.-black);
-      vec4 cover;
-      for(int i=0;i<4;i++){
+      float cov[7];
+      for(int i=0;i<7;i++){
         vec2 d=vInkW.xz-reveal[i].xy;
         float a=atan(d.y,d.x);
         float wob=.05*sin(a*5.+float(i)*2.1)+.025*sin(a*11.+float(i));
         float r=reveal[i].z*(1.+wob);
-        cover[i]=1.-smoothstep(r-.018,r,length(d));
+        cov[i]=1.-smoothstep(r-.018,r,length(d));
       }
-      diffuseColor.rgb *= substrate*(1.-cover.rgb*cmy)*(1.-cover.a*black);`);
+      // Pantone 1 carries the brick-orange areas, Pantone 2 the deep green: one exact ink each.
+      float spot1=1.-smoothstep(.05,.14,distance(whole,vec3(.40,.085,.04)));
+      float spot2=(1.-smoothstep(.025,.06,distance(whole,vec3(.014,.036,.031))));
+      vec3 print=substrate*(1.-vec3(cov[2],cov[3],cov[4])*cmy)*(1.-cov[1]*black);
+      print=mix(print,mix(substrate,whole,cov[0]),spot1);
+      print=mix(print,mix(substrate,whole,cov[5]),spot2*(1.-spot1));
+      float inkVarnish=cov[6];
+      // A wet, brighter band rides the varnish front as it spreads.
+      vec2 dv=vInkW.xz-reveal[6].xy;
+      float wet=smoothstep(reveal[6].z-.12,reveal[6].z-.01,length(dv))*cov[6]*step(reveal[6].z,2.);
+      diffuseColor.rgb *= print*(1.+.35*wet);`).replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
+      material.roughness=mix(material.roughness,.22,inkVarnish);
+      #ifdef USE_CLEARCOAT
+        material.clearcoat=mix(material.clearcoat,1.,inkVarnish);
+        material.clearcoatRoughness=mix(material.clearcoatRoughness,.03,inkVarnish);
+      #endif`);
   };
-  m.customProgramCacheKey = () => 'larre-encre-monde';
+  m.customProgramCacheKey = () => 'larre-encre-six';
   return m;
 }
 
@@ -178,7 +202,9 @@ export async function inkScene(canvas) {
 
   // Inks: glossy liquid, a column each, a crown of droplets and a spreading pool.
   const inks = pours.map((p, i) => {
-    const material = new T.MeshPhysicalMaterial({color: p.color, roughness: .07, metalness: 0, clearcoat: 1, clearcoatRoughness: .04, sheen: .3});
+    const material = p.varnish
+      ? new T.MeshPhysicalMaterial({color: 0xffffff, roughness: 0, metalness: 0, clearcoat: 1, clearcoatRoughness: 0, transparent: true, opacity: .42, envMapIntensity: 2.2})
+      : new T.MeshPhysicalMaterial({color: p.color, roughness: .07, metalness: 0, clearcoat: 1, clearcoatRoughness: .04, sheen: .3});
     const col = stream(scene, material);
     const drops = Array.from({length: 26}, (_, k) => {
       const d = new T.Mesh(new T.SphereGeometry(1, 20, 14), material); d.castShadow = true; scene.add(d);
@@ -197,8 +223,22 @@ export async function inkScene(canvas) {
   // Glue: a thin pale thread from a nozzle onto the side tab.
   const glueMat = new T.MeshPhysicalMaterial({color: 0xe9a93a, roughness: .12, clearcoat: 1, clearcoatRoughness: .05});
   const glueThread = stream(scene, glueMat);
-  const nozzle = new T.Mesh(new T.ConeGeometry(.012, .05, 24), new T.MeshPhysicalMaterial({color: 0x2a3432, metalness: .85, roughness: .25}));
-  nozzle.rotation.x = Math.PI; scene.add(nozzle);
+  // The applicator head of a gluing unit: a machined block, a heated barrel, a brass tip and its hose.
+  const nozzle = new T.Group(); scene.add(nozzle);
+  const steel = new T.MeshPhysicalMaterial({color: 0x9aa3a3, metalness: 1, roughness: .28, clearcoat: .4});
+  const dark = new T.MeshPhysicalMaterial({color: 0x1f2726, metalness: .6, roughness: .35, clearcoat: .6});
+  const brass = new T.MeshPhysicalMaterial({color: 0xc9a050, metalness: 1, roughness: .18});
+  const accent = new T.MeshStandardMaterial({color: 0xc64a25, roughness: .4});
+  const part = (geo, mat, y, rx = 0) => { const m = new T.Mesh(geo, mat); m.position.y = y; m.rotation.x = rx; m.castShadow = true; nozzle.add(m); return m; };
+  part(new T.ConeGeometry(.0042, .016, 24), brass, .008, Math.PI);
+  part(new T.CylinderGeometry(.0075, .0075, .012, 32), steel, .022);
+  part(new T.CylinderGeometry(.013, .013, .042, 40), steel, .049);
+  part(new T.CylinderGeometry(.0135, .0135, .005, 40), accent, .036);
+  for (let k = 0; k < 5; k++) part(new T.TorusGeometry(.0132, .0011, 8, 40), dark, .052 + k * .006, Math.PI / 2);
+  const block = part(new T.BoxGeometry(.048, .026, .034), dark, .083);
+  block.position.x = .01;
+  const hoseCurve = new T.CatmullRomCurve3([new T.Vector3(.03, .09, 0), new T.Vector3(.075, .12, -.01), new T.Vector3(.1, .2, -.04), new T.Vector3(.09, .35, -.08)]);
+  part(new T.TubeGeometry(hoseCurve, 48, .0055, 14), dark, 0);
 
   const camera = new T.PerspectiveCamera(32, 1, .01, 30);
   const sheetCentre = new T.Vector3(-hp.x, SHEET_Y, -hp.z);
@@ -220,7 +260,8 @@ export async function inkScene(canvas) {
       if (w / h > 1.1) camera.setViewOffset(w, h, -w * .1, 0, w, h); else camera.clearViewOffset();
       camera.updateProjectionMatrix();
     }
-    const p = clamp(progress), portrait = w / h < .9;
+    let p = clamp(progress);
+    const portrait = w / h < .9, pPrint = p;
 
     // 1. Pours on the sheet.
     inks.forEach(({p: pour, col, drops, pool}, i) => {
@@ -246,6 +287,9 @@ export async function inkScene(canvas) {
       pool.position.set(x, y + .001, z);
       const size = (.02 + spread * .07) * (1 - soak * .35); pool.scale.set(size, .02 * (1 - soak), size);
     });
+
+    // From here on the scene runs on its own clock, after the print.
+    p = toQ(p);
 
     // 2. Découpe: rules trace, the press closes, the waste and the other poses leave.
     const trace = ease(CUT[0], CUT[1], p), press = Math.sin(Math.PI * clamp((p - PRESS[0]) / (PRESS[1] - PRESS[0])));
@@ -295,8 +339,8 @@ export async function inkScene(canvas) {
     if (gluing) {
       hero.pivot.updateMatrixWorld(true);
       const head = bead.parent.localToWorld(tmp.set(x0 + run, -stock.thickness - .0014, -stock.tab * .5));
-      glueThread.update(head.y + .22, head.y + .001, head.x, head.z, .0032, p * 60);
-      nozzle.position.set(head.x, head.y + .245, head.z); nozzle.visible = true;
+      glueThread.update(head.y + .045, head.y + .001, head.x, head.z, .0028, p * 60);
+      nozzle.position.set(head.x, head.y + .045, head.z); nozzle.visible = true;
     }
 
     flock.forEach(({c, seed}) => {
@@ -310,10 +354,10 @@ export async function inkScene(canvas) {
     });
 
     // Studio tint: bare paper, the four inks, a cool grey for the cut, warm paper for the glue.
-    const tints = [0xddd3c2, 0xbfdde8, 0xedc6d6, 0xf2dc9c, 0xd2cec6, 0xc9d0cf, 0xe6dccb, 0xe4dccd];
-    const stops = [0, ...pours.map(q => q.start + FALL), CUT[0], .6, .9];
-    let k = 0; while (k < stops.length - 2 && p >= stops[k + 1]) k++;
-    studio.set(tints[k]).lerp(new T.Color(tints[k + 1]), ease(stops[k + 1] - .04, stops[k + 1] + .03, p));
+    const tints = [0xddd3c2, 0xecc9bb, 0xd3d1cd, 0xbfdde8, 0xedc6d6, 0xf2dc9c, 0xc9dcd2, 0xefebe3, 0xd2cec6, 0xc9d0cf, 0xe6dccb, 0xe4dccd];
+    const stops = [0, ...pours.map(q => q.start + FALL), toP(CUT[0]), toP(.6), toP(.9)];
+    let k = 0; while (k < stops.length - 2 && pPrint >= stops[k + 1]) k++;
+    studio.set(tints[k]).lerp(new T.Color(tints[k + 1]), ease(stops[k + 1] - .03, stops[k + 1] + .025, pPrint));
     floorMat.color.copy(studio); scene.fog.color.copy(studio);
 
     // Camera: the whole sheet for the print and the cut, then in on the pose, then an orbit.

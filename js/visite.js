@@ -396,7 +396,7 @@
   examine.addEventListener("click", openInspector);
 
   playButton.addEventListener("click", togglePlayback);
-  byId("lancer").addEventListener("click", event => enter(event, 0, false));
+  byId("lancer")?.addEventListener("click", event => enter(event, 0, false));
   document.querySelectorAll("[data-enter]").forEach(link => {
     link.addEventListener("click", event => enter(event, Number(link.dataset.enter), false));
   });

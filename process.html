@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#102121">
+  <meta name="description" content="Film 3D de 52 secondes : Dans l’atelier de Cartonnages Larré à Bayonne, suivez la fabrication d’une boîte, de la première impression à son ouverture chez le client.">
+  <title>Le process industriel · Cartonnages Larré, Bayonne</title>
+  <link rel="canonical" href="https://paullerouxlarre-debug.github.io/cartonnages-larre/process.html">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:site_name" content="Cartonnages Larré">
+  <meta property="og:title" content="Le process industriel · Cartonnages Larré, Bayonne">
+  <meta property="og:description" content="Un film 3D de 52 secondes suit un étui en carton, de l’impression offset jusqu’à son ouverture chez le client.">
+  <meta property="og:url" content="https://paullerouxlarre-debug.github.io/cartonnages-larre/process.html">
+  <meta property="og:image" content="https://paullerouxlarre-debug.github.io/cartonnages-larre/assets/partage.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Étui d’étude imprimé Larré posé devant une caisse d’expédition, image extraite du film 3D.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" href="assets/images/signe.png">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/barlow-condensed-bold.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/instrument-serif-italic.woff2">
+  <link rel="stylesheet" href="assets/visite.css">
+  <script defer src="js/visite.js?v=scroll5"></script>
+  <script type="module">
+    // The orange progress line under the film label follows the film clock.
+    const film = document.getElementById("ecran");
+    document.addEventListener("larre:temps", e => film?.style.setProperty("--film", (e.detail.time / 52).toFixed(4)));
+  </script>
+</head>
+<body>
+  <a class="skip" href="#parcours">Aller au film de fabrication</a>
+  <header class="masthead" id="top">
+    <div class="shell masthead-inner">
+      <a class="wordmark" href="index.html" aria-label="Cartonnages Larré, accueil"><img src="assets/images/larre.webp" width="600" height="142" alt="Larré Cartonnages"></a>
+      <nav aria-label="Navigation principale">
+        <a class="wide-nav" href="index.html">La fabrique</a>
+        <a class="wide-nav" href="index.html#atelier">L’atelier</a>
+        <a class="nav-contact" href="#contact">Votre projet<span class="nav-plus" aria-hidden="true">+</span></a>
+      </nav>
+    </div>
+  </header>
+  <main>
+    <section class="process-intro paper" aria-labelledby="process-titre">
+      <div class="shell">
+        <p class="overline"><span class="ink-chip" aria-hidden="true"></span>Le process industriel · Bayonne</p>
+        <h1 id="process-titre">De la palette <em>au client.</em></h1>
+        <p>Un film 3D de 52 secondes suit un étui dans l’atelier : la presse offset, l’autoplatine, la plieuse-colleuse, l’expédition, puis l’ouverture chez le client. Faites défiler pour avancer.</p>
+      </div>
+    </section>
+    <section class="journey" id="parcours" aria-label="Film interactif de fabrication">
+      <div class="screen" id="ecran">
+        <div class="film-window">
+          <video id="film" width="1280" height="756" muted playsinline preload="none" poster="assets/film/feuille.webp?v=5" aria-label="La fabrication d’un étui en carton, film muet de 52 secondes" aria-describedby="resume-film">
+            <source media="(max-width: 720px) and (orientation: portrait)" src="assets/film/fabrication-mobile.mp4?v=5" type="video/mp4">
+            <source src="assets/film/fabrication.mp4?v=5" type="video/mp4">
+            <p><a href="assets/film/fabrication.mp4?v=5">Ouvrir le film de fabrication</a></p>
+          </video>
+          <canvas id="sequence" aria-hidden="true"></canvas>
+          <img class="still" id="photo-plan" src="assets/film/feuille.webp?v=5" width="1200" height="708" alt="" hidden>
+          <canvas id="objet-3d" aria-label="Étui monté que vous pouvez faire tourner" hidden></canvas>
+        </div>
+        <div class="screen-shade" aria-hidden="true"></div>
+        <div class="film-top shell"><span class="film-label"><i aria-hidden="true"></i><span id="mode-film">La ligne de fabrication</span></span><a href="#lecture-film">Sortir du film</a></div>
+        <div class="film-info shell">
+          <div class="caption">
+            <p class="overline"><span class="station" id="station">01 / 05</span><span id="poste">Impression</span></p>
+            <h2 id="plan-titre">La presse offset</h2>
+            <p class="action-text" id="geste">Au margeur, les feuilles de carton vierge sont empilées sur une palette.</p>
+          </div>
+          <div class="film-aside"><span class="edition-key" aria-hidden="true"></span><span>Étui d’étude<br>Vue en coupe</span></div>
+        </div>
+        <div class="console film-controls" role="group" aria-label="Commandes du film">
+          <div class="shell console-inner">
+            <div class="transport">
+              <button class="transport-play" id="lecture" type="button" hidden></button>
+              <span class="clock"><span id="temps">0:00</span> <span class="clock-end">/ 0:52</span></span>
+              <input id="curseur" type="range" min="0" max="52" step="0.05" value="0" aria-label="Position dans le film">
+              <button type="button" class="inspect" id="examiner" hidden>Tourner l’étui</button>
+              <a class="transcript" href="#lecture-film" aria-label="Lire la version texte"><span>Version </span>texte</a>
+            </div>
+            <nav class="stations" aria-label="Chapitres du film">
+              <button type="button" data-sequence="0" aria-current="step">Offset</button>
+              <button type="button" data-sequence="14">Découpe</button>
+              <button type="button" data-sequence="26">Pliage<span class="long">-collage</span></button>
+              <button type="button" data-sequence="38">Expédition</button>
+              <button type="button" data-sequence="45">Client</button>
+            </nav>
+          </div>
+        </div>
+        <div class="object-controls" id="commandes-objet" role="group" aria-label="Orientation de l’étui" hidden>
+          <button type="button" id="rotation-gauche" aria-label="Tourner l’étui vers la gauche">−</button>
+          <span>Tourner l’étui</span>
+          <button type="button" id="rotation-droite" aria-label="Tourner l’étui vers la droite">+</button>
+          <button type="button" id="fermer-objet">Revenir au film</button>
+        </div>
+        <p class="sr-only" id="resume-film">Le film montre l’impression, la découpe et le rainage, le collage de la patte latérale, le départ des étuis à plat et l’ouverture d’un étui à la réception. Une transcription suit l’album de l’atelier.</p>
+        <p class="sr-only" id="etat-lecture" role="status"></p>
+      </div>
+    </section>
+
+    <section class="paper process-texte" aria-label="Version texte du film">
+      <div class="shell">
+        <details id="lecture-film" class="transcription">
+          <summary>Lire le parcours de la boîte</summary>
+          <ol>
+            <li><strong>Impression offset.</strong> Des ventouses prennent la feuille du dessus de la pile. Sur la table de marge, les feuilles se chevauchent, s’arrêtent contre les taquets frontaux et sont alignées sur le côté. Dans chacun des quatre groupes, le blanchet transfère une encre au carton. Chaque feuille porte quatre poses imprimées et rejoint la pile de réception.</li>
+            <li><strong>Découpe et rainage.</strong> La palette imprimée est amenée au margeur de l’autoplatine, qui presse chaque feuille contre la forme. Les filets coupants détachent le contour, les filets de rainage marquent les futurs plis. Pendant que les pinces gardent la feuille en repère, des poinçons chassent les déchets vers un bac. Les quatre poses se déposent ensuite à plat sur leurs piles.</li>
+            <li><strong>Pliage-collage.</strong> Le margeur prend les poses par le dessous de la pile, intérieur visible. Sous une buse fixe, un filet de colle est déposé sur la patte latérale. Les guides rabattent les pans puis les courroies maintiennent le joint sous pression.</li>
+            <li><strong>Expédition.</strong> Les étuis collés sont empilés à plat dans une caisse. Ses petits rabats se couchent, puis les grands, et un ruban adhésif ferme la jonction. Les caisses sont chargées pour le transport.</li>
+            <li><strong>Chez le client.</strong> Un étui sort de la caisse. Ses faces s’écartent, sa section devient rectangulaire. Le fond se ferme, puis le couvercle.</li>
+          </ol>
+          <p>Le film suit un étui d’étude. Ses décors et la réception chez le client sont des reconstitutions. <a href="https://www.cartonnages-larre.fr/fr/process.html">Découvrir les procédés de l’entreprise</a></p>
+          <p>Pour voir les machines en fonctionnement, retrouvez le départ de la feuille, la séparation des poses et le pliage d’un étui dans les démonstrations des constructeurs. <a href="https://www.komorisolutions.com/video/en/v/002.html">Margeur Komori</a> · <a href="https://www.youtube.com/watch?v=w7dzp3mnSg0&amp;t=84s">Découpe BOBST</a> · <a href="https://www.youtube.com/watch?v=Jwix1kCG9Es&amp;t=35s">Pliage BOBST</a></p>
+        </details>
+      </div>
+    </section>
+    <footer class="contact" id="contact">
+      <div class="shell">
+        <div class="contact-main"><div><p class="overline"><span class="ink-chip" aria-hidden="true"></span>Bureau d’études · Bayonne</p><h2>Parlons de<br><em>votre emballage.</em></h2></div>
+        <div class="contact-details" id="engagements"><p>Du format au choix du carton, le bureau d’études adapte le volume à votre produit.</p><a class="email" href="mailto:contact@larre.fr">contact@larre.fr</a><a class="phone" href="tel:+33559550652">05 59 55 06 52</a></div></div>
+        <div class="footline"><span>Cartonnages Larré · Zone industrielle Saint-Étienne, 64100 Bayonne</span><div><a href="https://www.cartonnages-larre.fr/fr/produits.html">Les produits</a><a href="https://www.cartonnages-larre.fr/fr/">Le site de l’entreprise</a><a href="index.html">La fabrique d’une boîte</a></div></div>
+      </div>
+    </footer>
+  </main>
+</body>
+</html>
