@@ -279,3 +279,38 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 @media(prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* Défilement immersif : suite d'images, grandes phrases, encres et révélations au scroll. */
+#encres { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 3; pointer-events: none; }
+#sequence { display: none; }
+.enhanced .sequence-mode.sequence-ready #sequence { display: block; pointer-events: none; cursor: auto; }
+.enhanced .sequence-mode.sequence-ready #film { visibility: hidden; }
+.statements { display: none; }
+.enhanced .statements { display: block; position: absolute; inset: clamp(5.5rem, 15vh, 10rem) 0 auto; pointer-events: none; text-align: center; }
+.statements p { position: absolute; left: 0; right: 0; margin: 0; opacity: 0; font: 700 clamp(3.2rem, 10vw, 10.5rem)/.9 var(--display); text-transform: uppercase; letter-spacing: -.03em; color: var(--paper); text-shadow: 0 6px 40px rgb(0 0 0 / 45%); will-change: opacity, transform; }
+.statements em { display: block; font: italic 400 1.02em/.9 "Instrument Serif", Georgia, serif; text-transform: none; letter-spacing: -.01em; color: var(--orange); }
+@media (prefers-reduced-motion: reduce) { .enhanced .statements { display: none; } }
+@media (max-width: 720px) { .enhanced .statements { inset-block-start: 4.6rem; } .statements p { font-size: clamp(2.6rem, 15vw, 4.2rem); } }
+
+.contact { position: relative; overflow: hidden; isolation: isolate; }
+.contact::before { content: ""; position: absolute; inset: -20% -10%; z-index: -1; pointer-events: none; opacity: .5;
+  background: radial-gradient(28% 34% at 12% 30%, #0a95c4 0 60%, transparent 61%), radial-gradient(22% 30% at 86% 22%, #d42a7b 0 58%, transparent 59%), radial-gradient(26% 28% at 70% 88%, #f3c21b 0 56%, transparent 57%), radial-gradient(18% 22% at 32% 92%, #ff784e 0 55%, transparent 56%);
+  filter: blur(46px) saturate(1.1); mix-blend-mode: screen; }
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .cover-photo img { animation: couv-derive linear both; animation-timeline: scroll(root); animation-range: 0 100vh; }
+    .cover-copy { animation: couv-leve linear both; animation-timeline: scroll(root); animation-range: 10vh 85vh; }
+    .album-heading h2, .album-heading > p, .workshop-view, .photo-selector, .transcription, .contact h2, .contact-details { animation: monte linear both; animation-timeline: view(); animation-range: entry 0% cover 28%; }
+    .photo-selector { animation-range: entry 10% cover 34%; }
+    .view-image img { animation: devoile linear both; animation-timeline: view(); animation-range: entry 0% cover 40%; }
+    .contact::before { animation: tache linear both; animation-timeline: view(); animation-range: entry 0% cover 60%; }
+    .contact h2 em { display: inline-block; animation: coule linear both; animation-timeline: view(); animation-range: entry 20% cover 55%; }
+  }
+}
+@keyframes couv-derive { to { transform: scale(1.14) translateY(5%); filter: saturate(1.15) contrast(1.13) brightness(.8); } }
+@keyframes couv-leve { to { transform: translateY(-14vh); opacity: 0; } }
+@keyframes monte { from { opacity: 0; transform: translateY(10vh); } to { opacity: 1; transform: none; } }
+@keyframes devoile { from { clip-path: inset(0 0 100% 0); transform: scale(1.2); } to { clip-path: inset(0); transform: none; } }
+@keyframes tache { from { transform: scale(.2) rotate(-20deg); opacity: 0; } to { transform: none; opacity: .5; } }
+@keyframes coule { from { transform: translateY(-.35em) skewY(-4deg); filter: blur(6px); opacity: 0; } to { transform: none; filter: none; opacity: 1; } }

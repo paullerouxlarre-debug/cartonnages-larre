@@ -23,9 +23,11 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/barlow-condensed-bold.woff2">
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/instrument-serif-italic.woff2">
   <link rel="stylesheet" href="assets/visite.css">
-  <script defer src="js/visite.js?v=ateliers5"></script>
+  <script defer src="js/visite.js?v=defilement1"></script>
+  <script type="module" src="js/encres.js?v=1"></script>
 </head>
 <body>
+  <canvas id="encres" aria-hidden="true"></canvas>
   <a class="skip" href="#parcours">Aller au film de fabrication</a>
   <header class="masthead" id="top">
     <div class="shell masthead-inner">
@@ -73,10 +75,19 @@
             <source src="assets/film/fabrication.mp4?v=5" type="video/mp4">
             <p><a href="assets/film/fabrication.mp4?v=5">Ouvrir le film de fabrication</a></p>
           </video>
+          <canvas id="sequence" aria-hidden="true"></canvas>
           <img class="still" id="photo-plan" src="assets/film/feuille.webp?v=5" width="1200" height="708" alt="" hidden>
           <canvas id="objet-3d" aria-label="Étui monté que vous pouvez faire tourner" hidden></canvas>
         </div>
         <div class="screen-shade" aria-hidden="true"></div>
+        <div class="statements" aria-hidden="true">
+          <p data-from="0.4" data-to="3.9">Une feuille <em>vierge.</em></p>
+          <p data-from="5.7" data-to="9.6">Quatre <em>encres.</em></p>
+          <p data-from="17.6" data-to="21.0">Découpée <em>net.</em></p>
+          <p data-from="29.0" data-to="32.6">Un filet <em>de colle.</em></p>
+          <p data-from="38.5" data-to="41.9">À plat, <em>en caisse.</em></p>
+          <p data-from="48.4" data-to="52.1">Ouvert. <em>Monté.</em></p>
+        </div>
         <div class="film-top shell"><span class="film-label"><i aria-hidden="true"></i><span id="mode-film">La ligne de fabrication</span></span><a href="#atelier">Sortir du film</a></div>
         <div class="film-info shell">
           <div class="caption">

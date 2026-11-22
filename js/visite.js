@@ -75,6 +75,55 @@
 
   function compact() { return motion.matches || mediaFailed; }
 
+  // Scroll mode draws a pre-rendered image sequence: every position is a still frame, so
+  // scrubbing stays smooth in both directions. The MP4 is only used for continuous playback.
+  const sequence = byId("sequence");
+  const sequenceContext = sequence.getContext("2d");
+  const fps = 12, frameCount = 625;
+  let frames = [], requested = new Set(), queue = [], inflight = 0, shown = -1, sequenceSet = "";
+  function sequenceDir() { return "assets/film/seq/" + (portrait.matches ? "p/" : "l/"); }
+  function resetSequence() {
+    if (sequenceSet === sequenceDir()) return;
+    sequenceSet = sequenceDir(); frames = []; requested = new Set(); queue = []; shown = -1;
+    for (const step of [48, 12, 4, 1]) for (let i = 0; i < frameCount; i += step) queue.push(i);
+  }
+  function pump() {
+    while (inflight < 6 && queue.length) {
+      const i = queue.shift();
+      if (requested.has(i)) continue;
+      requested.add(i); inflight++;
+      const image = new Image(), set = sequenceSet;
+      image.decoding = "async";
+      image.onload = () => { inflight--; if (set === sequenceSet) { frames[i] = image; if (shown !== Math.round(time * fps)) drawSequence(); } pump(); };
+      image.onerror = () => { inflight--; pump(); };
+      image.src = set + String(i + 1).padStart(3, "0") + ".webp?v=5";
+    }
+  }
+  function want(index) {
+    for (let d = 0; d < 10; d++) for (const i of [index + d, index - d]) if (i >= 0 && i < frameCount && !requested.has(i)) queue.unshift(i);
+    pump();
+  }
+  function drawSequence() {
+    resetSequence();
+    const index = Math.min(frameCount - 1, Math.round(time * fps));
+    want(index);
+    let pick = -1;
+    for (let d = 0; d < frameCount && pick < 0; d++) {
+      if (frames[index - d]) pick = index - d; else if (frames[index + d]) pick = index + d;
+    }
+    if (pick < 0) return;
+    const ratio = Math.min(devicePixelRatio || 1, 2);
+    const box = sequence.parentElement, w = Math.round(box.clientWidth * ratio), h = Math.round(box.clientHeight * ratio);
+    if (!w || !h) return;
+    if (sequence.width !== w || sequence.height !== h) { sequence.width = w; sequence.height = h; shown = -1; }
+    if (pick === shown) return;
+    const image = frames[pick], scale = Math.max(w / image.naturalWidth, h / image.naturalHeight);
+    const dw = image.naturalWidth * scale, dh = image.naturalHeight * scale;
+    sequenceContext.drawImage(image, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    shown = pick === index ? pick : -1;
+    journey.classList.add("sequence-ready");
+  }
+
   function framePath(name) {
     return "assets/film/" + (portrait.matches ? "portrait/" : "") + name + ".webp?v=5";
   }
@@ -119,6 +168,9 @@
     }
     examine.hidden = time < last - 2 || inspectorOpen || inspectorUnavailable;
     playButton.classList.toggle("playing", active);
+    journey.classList.toggle("sequence-mode", !active && !compact());
+    if (!active && !compact()) drawSequence();
+    document.dispatchEvent(new CustomEvent("larre:temps", {detail: {time, playing: active}}));
     const playLabel = mediaFailed ? "Réessayer de lire le film" : active ? "Mettre le film en pause" :
       time >= last - .1 ? "Revoir le film" : "Lire le film";
     playButton.setAttribute("aria-label", playLabel);
@@ -146,7 +198,8 @@
 
   function seek(value, align) {
     time = clamp(value);
-    if (!compact() || active) {
+    if (!active && !compact()) drawSequence();
+    else if (active) {
       loadFilm();
       pendingSeek = time;
       applySeek();
@@ -406,6 +459,10 @@
     refresh();
   }
   portrait.addEventListener("change", chooseFraming);
+  window.addEventListener("resize", () => { shown = -1; if (!active && !compact()) drawSequence(); });
+  new IntersectionObserver((entries, observer) => {
+    if (entries.some(entry => entry.isIntersecting) && !compact()) { drawSequence(); observer.disconnect(); }
+  }, {rootMargin: "150% 0px"}).observe(journey);
 
   const processPage = "https://www.cartonnages-larre.fr/fr/process.html";
   const photos = {
