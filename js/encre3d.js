@@ -78,12 +78,14 @@ function inkedMaterial(base, reveal, sheen) {
       print=mix(print,mix(substrate,whole,cov[0]),spot1);
       print=mix(print,mix(substrate,whole,cov[5]),spot2*(1.-spot1));
       float inkVarnish=cov[6];
-      // A wet, bright band rides the varnish front; the varnished board stays a little lighter.
-      diffuseColor.rgb *= print*(1.+.9*wet+.06*inkVarnish);`).replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-      // A band of light sweeps the freshly varnished board, then a soft gloss stays on it.
+      // Varnish deepens the print like a wet surface; it never whitens it.
+      diffuseColor.rgb *= print*(1.-.10*wet)*mix(1.,.93,inkVarnish);`).replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+      // The reflection of a long studio light slides over the varnished board: a sharp bright
+      // strip with a thin second one beside it, as on a glossy print turned under a lamp.
       float along=dot(vInkW.xz,sheen.xy)-sheen.z;
-      float glint=exp(-along*along/.006)+.45*exp(-(along+.16)*(along+.16)/.002);
-      totalEmissiveRadiance+=vec3(1.,.985,.95)*inkVarnish*(glint*sheen.w*.85+.07);`).replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
+      float strip=smoothstep(.075,.045,abs(along))+.55*smoothstep(.018,.008,abs(along+.15));
+      float halo=exp(-along*along/.05);
+      totalEmissiveRadiance+=vec3(1.,.99,.96)*inkVarnish*sheen.w*(1.7*strip+.07*halo);`).replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
       material.roughness=mix(material.roughness,.08,inkVarnish);
       #ifdef USE_CLEARCOAT
         material.clearcoat=mix(material.clearcoat,1.,inkVarnish);
@@ -220,8 +222,8 @@ export async function inkScene(canvas) {
   // Inks: glossy liquid, a column each, a crown of droplets and a spreading pool.
   const inks = pours.flatMap((p, i) => {
     const material = p.varnish
-      ? new T.MeshPhysicalMaterial({color: 0xf6fbff, roughness: 0, metalness: 0, clearcoat: 1, clearcoatRoughness: 0, transparent: true, opacity: .78,
-          envMapIntensity: 3.2, iridescence: .9, iridescenceIOR: 1.35, specularIntensity: 1})
+      ? new T.MeshPhysicalMaterial({color: 0xfdfaf2, roughness: 0, metalness: 0, clearcoat: 1, clearcoatRoughness: 0, transparent: true, opacity: .42,
+          envMapIntensity: 4, iridescence: .5, iridescenceIOR: 1.35, specularIntensity: 1, depthWrite: false})
       : new T.MeshPhysicalMaterial({color: p.color, roughness: .07, metalness: 0, clearcoat: 1, clearcoatRoughness: .04, sheen: .3});
     return jetsAt[i].map((at, k) => jet(p, i, k, at, material));
   });
@@ -309,12 +311,12 @@ export async function inkScene(canvas) {
       const size = (.014 + spread * .05) * (1 - soak * .35); pool.scale.set(size, .02 * (1 - soak), size);
     });
 
-    // The varnish glint crosses the sheet diagonally while the varnish lands, then fades.
+    // Once the varnish covers the sheet, a light reflection crosses it diagonally, then fades.
     const varnishHit = pours[6].start + FALL;
-    const sweep = ease(varnishHit + .01, varnishHit + .11, p);
+    const sweep = clamp((p - varnishHit - .04) / .085);
     const c0 = C0[0] * .6 + C0[1] * .8;
-    sheen.value.z = c0 + mix(-.75, .75, sweep);
-    sheen.value.w = Math.sin(Math.PI * sweep);
+    sheen.value.z = c0 + mix(-.85, .85, sweep);
+    sheen.value.w = ease(0, .12, sweep) * (1 - ease(.88, 1, sweep));
 
     // From here on the scene runs on its own clock, after the print.
     p = toQ(p);

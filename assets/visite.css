@@ -328,6 +328,8 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 .encre-repli .encre-repli, .encre-fixe:not(.encre-prete) .encre-repli { opacity: 1; }
 .encre-texte { position: absolute; inset: 0; pointer-events: none; }
 .encre-texte > * { position: absolute; left: var(--gutter); right: var(--gutter); will-change: opacity, transform; }
+/* Hidden until the script fades them in, so nothing piles up before it starts. */
+.encre-texte > [data-from]:not(.encre-titre) { opacity: 0; visibility: hidden; }
 .encre-titre { top: clamp(7rem, 22vh, 13rem); max-width: 46rem; }
 .encre-titre .overline { color: #3a4b47; }
 .encre h1 { margin: 1rem 0 1.3rem; font-weight: 700; }
