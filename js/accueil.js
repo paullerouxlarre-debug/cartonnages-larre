@@ -1,16 +1,26 @@
-// Opening: the scroll position through #encre drives the 3D ink scene and its captions.
+// Opening, played as a film in chapters: scrolling a little starts a chapter, which then plays
+// on its own (impression, découpe, pliage-collage). Scrolling back rewinds quickly.
 // Reduced motion shows the finished box.
 const motion = matchMedia("(prefers-reduced-motion: reduce)");
 const section = document.getElementById("encre");
 const canvas = document.getElementById("encre-3d");
-const labels = [...section.querySelectorAll("[data-from]")].map(el => ({el, from: +el.dataset.from, to: +el.dataset.to}));
+const labels = [...section.querySelectorAll("[data-from]")].map(el => ({el, from: +el.dataset.from, to: +el.dataset.to, edge: +(el.dataset.edge || .018)}));
+// Chapter ends in scene time, their playing time in seconds, and the hint shown once each one is over.
+const chapters = [
+  {end: 0, seconds: 1, hint: "Faites défiler : l’impression commence"},
+  {end: .52, seconds: 15, hint: "Défilez : la découpe"},
+  {end: .663, seconds: 5.5, hint: "Défilez : le pliage-collage"},
+  {end: 1, seconds: 10, hint: ""}
+];
+const hint = document.getElementById("encre-indice"), hintBox = hint?.parentElement;
 const steps = [...section.querySelectorAll("[data-actif]")].map(el => { const [from, to] = el.dataset.actif.split(",").map(Number); return {el, from, to}; });
 const statements = [...document.querySelectorAll(".statements p")].map(el => ({el, from: +el.dataset.from, to: +el.dataset.to}));
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const smooth = (a, b, v) => { const u = clamp((v - a) / (b - a)); return u * u * (3 - 2 * u); };
 
-function fade(items, t, edge) {
+function fade(items, t) {
   for (const s of items) {
+    const edge = s.edge;
     const v = smooth(s.from - (s.from > 0 ? edge : 1), s.from + edge, t) * (1 - smooth(s.to - edge, s.to + (s.to >= 1 ? 1 : edge), t));
     s.el.style.opacity = v.toFixed(3);
     s.el.style.visibility = v < .01 ? "hidden" : "visible";
@@ -18,22 +28,43 @@ function fade(items, t, edge) {
   }
 }
 
-let scene = null, progress = 0, frame = 0, visible = true, failed = false;
+let scene = null, progress = 0, frame = 0, visible = true, failed = false, chapter = 0, last = 0;
 function measure() {
   const box = section.getBoundingClientRect();
   const travel = Math.max(1, section.offsetHeight - innerHeight);
-  progress = clamp(-box.top / travel);
+  const t = clamp(-box.top / travel);
+  // Four scroll stops: rest, then one per chapter. A small scroll is enough to start the next one.
+  chapter = t < .04 ? 0 : t < .45 ? 1 : t < .78 ? 2 : 3;
   visible = box.bottom > 0 && box.top < innerHeight;
+}
+function advance(now) {
+  const dt = Math.min(.1, last ? (now - last) / 1000 : 0); last = now;
+  const target = chapters[chapter].end;
+  if (progress < target) {
+    // Play forward at the pace of the chapter being played.
+    const k = chapters.findIndex(c => c.end > progress + 1e-6);
+    const c = chapters[Math.max(1, k)], prev = chapters[Math.max(0, k - 1)];
+    progress = Math.min(target, progress + dt * (c.end - prev.end) / c.seconds);
+  } else if (progress > target) {
+    progress = Math.max(target, progress - dt * .35);
+  }
+  return progress !== target;
 }
 function render(now) {
   frame = 0;
   measure();
-  fade(labels, progress, .018);
+  const moving = advance(now);
+  fade(labels, progress);
+  if (hintBox) {
+    const c = chapters[chapter], idle = !moving && c.hint;
+    if (idle && hint.textContent !== c.hint) hint.textContent = c.hint;
+    hintBox.classList.toggle("visible", !!idle);
+  }
   for (const s of steps) s.el.classList.toggle("actif", progress >= s.from && progress < s.to);
   section.style.setProperty("--p", progress.toFixed(4));
   if (scene && visible) scene.draw(progress, now / 1000);
   // Keep the floating boxes alive while the closing shot is on screen.
-  if (visible && progress > .8 && !motion.matches) schedule();
+  if (moving || (visible && progress > .8 && !motion.matches)) schedule(); else last = 0;
 }
 function schedule() { if (!frame) frame = requestAnimationFrame(render); }
 
@@ -45,7 +76,7 @@ async function start() {
   }
   if (!scene && !failed) {
     try {
-      const {inkScene} = await import("./encre3d.js?v=5");
+      const {inkScene} = await import("./encre3d.js?v=6");
       scene = await inkScene(canvas);
       document.documentElement.classList.add("encre-prete");
     } catch (error) {
@@ -54,7 +85,7 @@ async function start() {
       console.warn("Scène 3D indisponible :", error.message);
     }
   }
-  if (motion.matches && scene) { scene.draw(.97, 0); return; }
+  if (motion.matches && scene) { progress = 1; scene.draw(.97, 0); return; }
   schedule();
 }
 

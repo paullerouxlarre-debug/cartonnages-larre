@@ -5,11 +5,11 @@ const {mkdir} = require('node:fs/promises');
 const path = require('node:path');
 const {once} = require('node:events');
 
-async function render(base, directory, portrait) {
+async function render(base, directory, portrait, hd) {
   const site = new URL(base.endsWith('/') ? base : base + '/');
   const executablePath = process.env.CHROME_BIN;
-  const width = portrait ? 720 : 1280;
-  const height = portrait ? 746 : 756;
+  const width = hd ? 1920 : portrait ? 720 : 1280;
+  const height = hd ? 1080 : portrait ? 746 : 756;
   await mkdir(directory, {recursive:true});
   const browser = await chromium.launch({headless:true,executablePath,args:['--enable-unsafe-swiftshader']});
   let encoder;
@@ -27,8 +27,8 @@ async function render(base, directory, portrait) {
         return canvas.toDataURL('image/jpeg',.95).split(',')[1];
       };
     });
-    const dest = path.join(directory,portrait?'fabrication-mobile.mp4':'fabrication.mp4');
-    encoder = spawn('ffmpeg',['-hide_banner','-loglevel','error','-y','-f','image2pipe','-framerate','24','-c:v','mjpeg','-i','pipe:0','-an','-c:v','libx264','-preset','fast','-crf','20','-pix_fmt','yuv420p','-g','12','-keyint_min','12','-sc_threshold','0','-movflags','+faststart',dest],{stdio:['pipe','inherit','inherit']});
+    const dest = path.join(directory,hd?'fabrication-hd.mp4':portrait?'fabrication-mobile.mp4':'fabrication.mp4');
+    encoder = spawn('ffmpeg',['-hide_banner','-loglevel','error','-y','-f','image2pipe','-framerate','24','-c:v','mjpeg','-i','pipe:0','-an','-c:v','libx264','-preset','fast','-crf',hd?'19':'20','-pix_fmt','yuv420p','-g','12','-keyint_min','12','-sc_threshold','0','-movflags','+faststart',dest],{stdio:['pipe','inherit','inherit']});
     const finished = once(encoder,'close');
     for(let frame=0;frame<=52*24;frame++){
       const data = await page.evaluate(t=>window.renderFrame(t),frame/24);
@@ -44,5 +44,5 @@ async function render(base, directory, portrait) {
   }
 }
 const [base, directory, flag] = process.argv.slice(2);
-if(!base || !directory) throw Error('Usage : node outils/rendre-film.cjs URL DOSSIER [--portrait]');
-render(base,directory,flag==='--portrait').catch(error=>{console.error(error);process.exitCode=1;});
+if(!base || !directory) throw Error('Usage : node outils/rendre-film.cjs URL DOSSIER [--portrait|--hd]');
+render(base,directory,flag==='--portrait',flag==='--hd').catch(error=>{console.error(error);process.exitCode=1;});

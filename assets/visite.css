@@ -321,7 +321,7 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 .masthead-inner::after { background: rgb(27 43 41 / 18%); }
 .masthead .nav-contact { border-color: rgb(27 43 41 / 55%); color: #1b2b29; }
 .masthead .nav-contact:hover { background: #1b2b29; color: var(--paper); }
-.encre { position: relative; height: 900vh; background: #ddd3c2; color: #1b2b29; }
+.encre { position: relative; height: 400vh; background: #ddd3c2; color: #1b2b29; }
 .encre-scene { position: sticky; top: 0; height: 100svh; overflow: hidden; }
 #encre-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .encre-repli { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
@@ -367,7 +367,7 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 .encre-rail li.actif { color: #1b2b29; }
 .encre-rail li.actif::after { transform: scaleX(1); background: #c64a25; }
 @media (max-width: 720px) {
-  .encre { height: 760vh; }
+  .encre { height: 400vh; }
   .encre-titre { top: 6.2rem; }
   .encre-teinte, .encre-etape { bottom: 2.6rem; }
   .encre-texte > .encre-rail { top: 5.2rem; gap: .8rem; font-size: .62rem; }
@@ -432,3 +432,35 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 .process-intro h1 em { display: block; font: italic 400 1.05em/.86 "Instrument Serif", Georgia, serif; text-transform: none; color: #c64a25; }
 .process-intro p:not(.overline) { max-width: 34rem; font-size: clamp(1rem, 1.3vw, 1.15rem); line-height: 1.5; color: #2f403c; }
 .process-texte { padding: clamp(3rem, 8vh, 5rem) 0; }
+
+/* Onglets de l'en-tête : la fabrique d'une boîte et le process industriel, toujours visibles. */
+.masthead .onglet { position: relative; padding: .35rem 0; }
+.masthead .onglet[aria-current="page"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -.1rem; height: 2px; background: #c64a25; }
+@media (max-width: 720px) {
+  .masthead nav { gap: .9rem; font-size: .84rem; }
+  .masthead .onglet .long { display: none; }
+  .nav-contact { font-size: 0; gap: 0; padding: .44rem .62rem; }
+  .nav-contact .nav-plus { font-size: 1rem; }
+}
+
+/* Ouverture en chapitres : chaque arrêt de défilement lance un chapitre du film. */
+html { scroll-snap-type: y proximity; }
+.encre-arret { position: absolute; left: 0; width: 1px; height: 1px; top: calc(var(--k) * (100% - 100svh) / 3); scroll-snap-align: start; scroll-snap-stop: always; }
+.encre .encre-avance { opacity: 0; transition: opacity .5s; }
+.encre .encre-avance.visible { opacity: 1; }
+
+/* Page process : un film à lancer, avec ses chapitres. */
+.lecteur { background: #102120; padding: clamp(2rem, 6vh, 4rem) 0 clamp(3rem, 8vh, 5rem); }
+.lecteur-cadre { position: relative; aspect-ratio: 16 / 9; background: #0b1716; box-shadow: 0 40px 90px rgb(0 0 0 / 35%); }
+.lecteur-cadre video { display: block; width: 100%; height: 100%; object-fit: cover; background: #0b1716; }
+.lecteur-lancer { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 1.2rem; border: 0; cursor: pointer; color: #f4efe5; font: 700 clamp(1.2rem, 2.4vw, 2rem)/1 var(--display); text-transform: uppercase; letter-spacing: .01em; background: linear-gradient(0deg, rgb(10 22 21 / 55%), rgb(10 22 21 / 10%)); }
+.lecteur-lancer[hidden] { display: none; }
+.lecteur-lancer small { display: block; margin-top: .35rem; font: .78rem var(--mono); letter-spacing: .12em; opacity: .8; }
+.lecteur-rond { width: clamp(3.6rem, 7vw, 5.4rem); aspect-ratio: 1; border-radius: 50%; background: #c64a25; position: relative; box-shadow: 0 14px 40px rgb(198 74 37 / 45%); transition: transform .3s; }
+.lecteur-rond::after { content: ""; position: absolute; left: 54%; top: 50%; transform: translate(-50%, -50%); border-style: solid; border-width: .75rem 0 .75rem 1.25rem; border-color: transparent transparent transparent #f4efe5; }
+.lecteur-lancer:hover .lecteur-rond, .lecteur-lancer:focus-visible .lecteur-rond { transform: scale(1.07); }
+.chapitres { list-style: none; margin: 1.2rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .5rem; }
+.chapitres button { width: 100%; text-align: left; padding: .8rem .9rem; border: 0; border-top: 2px solid rgb(244 239 229 / 22%); background: rgb(244 239 229 / 5%); color: #e9e3d6; font: 500 .92rem/1.3 inherit; cursor: pointer; }
+.chapitres button span { display: block; margin-bottom: .25rem; font: .7rem var(--mono); letter-spacing: .12em; color: #e3916f; }
+.chapitres button:hover, .chapitres button[aria-current] { border-top-color: #c64a25; background: rgb(244 239 229 / 10%); color: #fff; }
+@media (max-width: 720px) { .chapitres { grid-template-columns: 1fr 1fr; } .chapitres li:last-child { grid-column: span 2; } }

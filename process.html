@@ -22,11 +22,19 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/barlow-condensed-bold.woff2">
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/instrument-serif-italic.woff2">
   <link rel="stylesheet" href="assets/visite.css">
-  <script defer src="js/visite.js?v=scroll7"></script>
   <script type="module">
-    // The orange progress line under the film label follows the film clock.
-    const film = document.getElementById("ecran");
-    document.addEventListener("larre:temps", e => film?.style.setProperty("--film", (e.detail.time / 52).toFixed(4)));
+    // A plain film with its own controls: a large start button and chapter jumps.
+    const film = document.getElementById("film-hd"), start = document.getElementById("lancer-film");
+    const chapters = [...document.querySelectorAll(".chapitres button")];
+    const play = t => { if (t !== undefined) film.currentTime = t; film.play(); };
+    start.addEventListener("click", () => play());
+    film.addEventListener("play", () => start.hidden = true);
+    film.addEventListener("ended", () => { start.hidden = false; });
+    chapters.forEach(b => b.addEventListener("click", () => play(+b.dataset.t)));
+    film.addEventListener("timeupdate", () => {
+      let k = 0; chapters.forEach((b, i) => { if (film.currentTime >= +b.dataset.t - .05) k = i; });
+      chapters.forEach((b, i) => b.toggleAttribute("aria-current", i === k));
+    });
   </script>
 </head>
 <body>
@@ -35,7 +43,8 @@
     <div class="shell masthead-inner">
       <a class="wordmark" href="index.html" aria-label="Cartonnages Larré, accueil"><img src="assets/images/larre.webp" width="600" height="142" alt="Larré Cartonnages"></a>
       <nav aria-label="Navigation principale">
-        <a class="wide-nav" href="index.html">La fabrique</a>
+        <a class="onglet" href="index.html">La fabrique<span class="long"> d’une boîte</span></a>
+        <a class="onglet" href="process.html" aria-current="page">Le process<span class="long"> industriel</span></a>
         <a class="wide-nav" href="index.html#atelier">L’atelier</a>
         <a class="nav-contact" href="#contact">Votre projet<span class="nav-plus" aria-hidden="true">+</span></a>
       </nav>
@@ -46,60 +55,28 @@
       <div class="shell">
         <p class="overline"><span class="ink-chip" aria-hidden="true"></span>Le process industriel · Bayonne</p>
         <h1 id="process-titre">De la palette <em>au client.</em></h1>
-        <p>Un film 3D de 52 secondes suit un étui dans l’atelier : la presse offset, l’autoplatine, la plieuse-colleuse, l’expédition, puis l’ouverture chez le client. Faites défiler pour avancer.</p>
+        <p>Un film 3D de 52 secondes suit un étui dans l’atelier : la presse offset, l’autoplatine, la plieuse-colleuse, l’expédition, puis l’ouverture chez le client.</p>
       </div>
     </section>
-    <section class="journey" id="parcours" aria-label="Film interactif de fabrication">
-      <div class="screen" id="ecran">
-        <div class="film-window">
-          <video id="film" width="1280" height="756" muted playsinline preload="none" poster="assets/film/feuille.webp?v=5" aria-label="La fabrication d’un étui en carton, film muet de 52 secondes" aria-describedby="resume-film">
-            <source media="(max-width: 720px) and (orientation: portrait)" src="assets/film/fabrication-mobile.mp4?v=7" type="video/mp4">
-            <source src="assets/film/fabrication.mp4?v=7" type="video/mp4">
-            <p><a href="assets/film/fabrication.mp4?v=7">Ouvrir le film de fabrication</a></p>
+    <section class="lecteur" id="parcours" aria-label="Film de la ligne de fabrication">
+      <div class="shell">
+        <div class="lecteur-cadre">
+          <video id="film-hd" controls playsinline preload="metadata" poster="assets/film/affiche.webp?v=8" aria-describedby="resume-film">
+            <source src="assets/film/fabrication-hd.mp4?v=8" type="video/mp4">
+            <p><a href="assets/film/fabrication-hd.mp4?v=8">Ouvrir le film de fabrication</a></p>
           </video>
-          <canvas id="sequence" aria-hidden="true"></canvas>
-          <img class="still" id="photo-plan" src="assets/film/feuille.webp?v=5" width="1200" height="708" alt="" hidden>
-          <canvas id="objet-3d" aria-label="Étui monté que vous pouvez faire tourner" hidden></canvas>
+          <button class="lecteur-lancer" id="lancer-film" type="button"><span class="lecteur-rond" aria-hidden="true"></span><span>Lancer le film <small>0:52</small></span></button>
         </div>
-        <div class="screen-shade" aria-hidden="true"></div>
-        <div class="film-top shell"><span class="film-label"><i aria-hidden="true"></i><span id="mode-film">La ligne de fabrication</span></span><a href="#lecture-film">Sortir du film</a></div>
-        <div class="film-info shell">
-          <div class="caption">
-            <p class="overline"><span class="station" id="station">01 / 05</span><span id="poste">Impression</span></p>
-            <h2 id="plan-titre">La presse offset</h2>
-            <p class="action-text" id="geste">Au margeur, les feuilles de carton vierge sont empilées sur une palette.</p>
-          </div>
-          <div class="film-aside"><span class="edition-key" aria-hidden="true"></span><span>Étui d’étude<br>Vue en coupe</span></div>
-        </div>
-        <div class="console film-controls" role="group" aria-label="Commandes du film">
-          <div class="shell console-inner">
-            <div class="transport">
-              <button class="transport-play" id="lecture" type="button" hidden></button>
-              <span class="clock"><span id="temps">0:00</span> <span class="clock-end">/ 0:52</span></span>
-              <input id="curseur" type="range" min="0" max="52" step="0.05" value="0" aria-label="Position dans le film">
-              <button type="button" class="inspect" id="examiner" hidden>Tourner l’étui</button>
-              <a class="transcript" href="#lecture-film" aria-label="Lire la version texte"><span>Version </span>texte</a>
-            </div>
-            <nav class="stations" aria-label="Chapitres du film">
-              <button type="button" data-sequence="0" aria-current="step">Offset</button>
-              <button type="button" data-sequence="14">Découpe</button>
-              <button type="button" data-sequence="26">Pliage<span class="long">-collage</span></button>
-              <button type="button" data-sequence="38">Expédition</button>
-              <button type="button" data-sequence="45">Client</button>
-            </nav>
-          </div>
-        </div>
-        <div class="object-controls" id="commandes-objet" role="group" aria-label="Orientation de l’étui" hidden>
-          <button type="button" id="rotation-gauche" aria-label="Tourner l’étui vers la gauche">−</button>
-          <span>Tourner l’étui</span>
-          <button type="button" id="rotation-droite" aria-label="Tourner l’étui vers la droite">+</button>
-          <button type="button" id="fermer-objet">Revenir au film</button>
-        </div>
-        <p class="sr-only" id="resume-film">Le film montre l’impression, la découpe et le rainage, le collage de la patte latérale, le départ des étuis à plat et l’ouverture d’un étui à la réception. Une transcription suit l’album de l’atelier.</p>
-        <p class="sr-only" id="etat-lecture" role="status"></p>
+        <ol class="chapitres" aria-label="Chapitres du film">
+          <li><button type="button" data-t="0"><span>01</span>Impression offset</button></li>
+          <li><button type="button" data-t="14"><span>02</span>Découpe et rainage</button></li>
+          <li><button type="button" data-t="26"><span>03</span>Pliage-collage</button></li>
+          <li><button type="button" data-t="38"><span>04</span>Expédition</button></li>
+          <li><button type="button" data-t="45"><span>05</span>Chez le client</button></li>
+        </ol>
+        <p class="sr-only" id="resume-film">Le film montre l’impression, la découpe et le rainage, le collage de la patte latérale, le départ des étuis à plat et l’ouverture d’un étui à la réception. Une transcription suit le film.</p>
       </div>
     </section>
-
     <section class="paper process-texte" aria-label="Version texte du film">
       <div class="shell">
         <details id="lecture-film" class="transcription">

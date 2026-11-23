@@ -40,13 +40,14 @@ const CUT = [.445, .505], PRESS = [.505, .53], DROP = [.53, .6], AWAY = [.565, .
 
 // Printed board revealed channel by channel from each impact point. Coordinates are in
 // world space; once a pour has spread it covers everything, so later motion keeps the print.
-function inkedMaterial(base, reveal) {
+function inkedMaterial(base, reveal, sheen) {
   const m = base.clone();
   m.onBeforeCompile = shader => {
     shader.uniforms.reveal = reveal;
+    shader.uniforms.sheen = sheen;
     shader.vertexShader = 'varying vec3 vInkW;\n' + shader.vertexShader.replace('#include <project_vertex>',
       '#include <project_vertex>\nvInkW=(modelMatrix*vec4(transformed,1.0)).xyz;');
-    shader.fragmentShader = 'uniform vec4 reveal[28];\nvarying vec3 vInkW;\n' + shader.fragmentShader.replace('#include <map_fragment>', `
+    shader.fragmentShader = 'uniform vec4 sheen;\nuniform vec4 reveal[28];\nvarying vec3 vInkW;\n' + shader.fragmentShader.replace('#include <map_fragment>', `
       vec3 substrate=vec3(0.90466,0.87962,0.79130);
       vec3 whole=texture2D(map, vMapUv).rgb;
       vec3 refl=clamp(whole/substrate,vec3(.001),vec3(1.));
@@ -78,7 +79,11 @@ function inkedMaterial(base, reveal) {
       print=mix(print,mix(substrate,whole,cov[5]),spot2*(1.-spot1));
       float inkVarnish=cov[6];
       // A wet, bright band rides the varnish front; the varnished board stays a little lighter.
-      diffuseColor.rgb *= print*(1.+.9*wet+.06*inkVarnish);`).replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
+      diffuseColor.rgb *= print*(1.+.9*wet+.06*inkVarnish);`).replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+      // A band of light sweeps the freshly varnished board, then a soft gloss stays on it.
+      float along=dot(vInkW.xz,sheen.xy)-sheen.z;
+      float glint=exp(-along*along/.006)+.45*exp(-(along+.16)*(along+.16)/.002);
+      totalEmissiveRadiance+=vec3(1.,.985,.95)*inkVarnish*(glint*sheen.w*.85+.07);`).replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
       material.roughness=mix(material.roughness,.08,inkVarnish);
       #ifdef USE_CLEARCOAT
         material.clearcoat=mix(material.clearcoat,1.,inkVarnish);
@@ -154,10 +159,12 @@ export async function inkScene(canvas) {
   // Four jets per ink, one above each pose, slightly offset towards the ink's own impact point.
   const jetsAt = pours.map(p => imposePositions.map(({x, z}) => [C0[0] + x + (p.at[0] - C0[0]) * .28, C0[1] + z + (p.at[1] - C0[1]) * .28]));
   const reveal = {value: jetsAt.flat().map(([x, z]) => new T.Vector4(x, z, 0, 0))};
+  // Varnish glint: direction across the sheet (x, z), band position, strength.
+  const sheen = {value: new T.Vector4(.6, .8, -2, 0)};
   const lib = materials(), swapped = new Map();
   const swap = m => {
     if (m !== lib.outer && m !== lib.plainSheet) return m;
-    if (!swapped.has(m)) swapped.set(m, inkedMaterial(m, reveal));
+    if (!swapped.has(m)) swapped.set(m, inkedMaterial(m, reveal, sheen));
     return swapped.get(m);
   };
   const inked = root => root.traverse(o => {
@@ -301,6 +308,13 @@ export async function inkScene(canvas) {
       pool.position.set(x, y + .001, z);
       const size = (.014 + spread * .05) * (1 - soak * .35); pool.scale.set(size, .02 * (1 - soak), size);
     });
+
+    // The varnish glint crosses the sheet diagonally while the varnish lands, then fades.
+    const varnishHit = pours[6].start + FALL;
+    const sweep = ease(varnishHit + .01, varnishHit + .11, p);
+    const c0 = C0[0] * .6 + C0[1] * .8;
+    sheen.value.z = c0 + mix(-.75, .75, sweep);
+    sheen.value.w = Math.sin(Math.PI * sweep);
 
     // From here on the scene runs on its own clock, after the print.
     p = toQ(p);
