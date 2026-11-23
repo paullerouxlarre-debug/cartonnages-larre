@@ -27,10 +27,12 @@ async function render(base, directory, portrait, hd) {
         return canvas.toDataURL('image/jpeg',.95).split(',')[1];
       };
     });
-    const dest = path.join(directory,hd?'fabrication-hd.mp4':portrait?'fabrication-mobile.mp4':'fabrication.mp4');
+    // FROM and TO (frames) render one segment, so several processes can share a long film.
+    const from=+(process.env.FROM||0), to=+(process.env.TO||52*24), part=process.env.FROM?'-'+String(from).padStart(4,'0'):'';
+    const dest = path.join(directory,(hd?'fabrication-hd':portrait?'fabrication-mobile':'fabrication')+part+'.mp4');
     encoder = spawn('ffmpeg',['-hide_banner','-loglevel','error','-y','-f','image2pipe','-framerate','24','-c:v','mjpeg','-i','pipe:0','-an','-c:v','libx264','-preset','fast','-crf',hd?'19':'20','-pix_fmt','yuv420p','-g','12','-keyint_min','12','-sc_threshold','0','-movflags','+faststart',dest],{stdio:['pipe','inherit','inherit']});
     const finished = once(encoder,'close');
-    for(let frame=0;frame<=52*24;frame++){
+    for(let frame=from;frame<=to;frame++){
       const data = await page.evaluate(t=>window.renderFrame(t),frame/24);
       if (!encoder.stdin.write(Buffer.from(data,'base64'))) await once(encoder.stdin,'drain');
       if(frame%240===0) console.log(frame/24+' s');
