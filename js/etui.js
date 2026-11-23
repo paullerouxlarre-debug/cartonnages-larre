@@ -85,7 +85,7 @@ function runningSheet(parent,material) {
 }
 
 export function makePressSheet(parent,{flexible=false}={}) {
-  const pivot=group(parent),{material,ink,leadingEdges,atContact}=sheetMaterial();
+  const pivot=group(parent),{material,ink,leadingEdges,laterEdges,atContact}=sheetMaterial();
   let conform;
   if(flexible) {
     conform=runningSheet(pivot,material);
@@ -96,7 +96,9 @@ export function makePressSheet(parent,{flexible=false}={}) {
   return {pivot,conform,setInk(value){atContact.value=0;ink.value=saturate(value);},
     setContact(distance,nips){
       atContact.value=1;
-      leadingEdges.value.set(...nips.map(contact=>1-(distance-contact)/pressFormat.x));
+      const fronts=nips.map(contact=>1-(distance-contact)/pressFormat.x);
+      while(fronts.length<8)fronts.push(9);
+      leadingEdges.value.set(...fronts.slice(0,4));laterEdges.value.set(...fronts.slice(4,8));
     }
   };
 }

@@ -136,7 +136,7 @@ export function cuttingPass(root,props,machine) {
     const approach=ease(15.35,18.38,time),release=ease(20.12,21.13,time);
     const transfer=ease(22.67,24.32,time);
     const sheetX=mix(-2.05,dieX,approach)+(stripperX-dieX)*release+(deliveryX-stripperX)*transfer;
-    const height=mix(feedY+.00132,paperLine,approach)+Math.sin(Math.PI*approach)*.016+.044*lift;
+    const height=mix(feedY+.00132,paperLine,approach)+Math.sin(Math.PI*approach)*.016+Math.max(0,.094*lift-.05);
     const isCut=time>=19.42;
     sheet.pivot.visible=!isCut;sheet.pivot.position.set(sheetX,height,0);
     cut.pivot.visible=isCut;cut.pivot.position.set(sheetX,height,0);

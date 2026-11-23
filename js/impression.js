@@ -4,9 +4,12 @@ const length=pressFormat.x, half=length/2;
 const clamp=x=>Math.min(1,Math.max(0,x));
 const smooth=(a,b,x)=>{const v=clamp((x-a)/(b-a));return v*v*(3-2*v);};
 const mix=(a,b,u)=>a+(b-a)*u;
-const line=1.16, r=.25, forward=1.03;
-const unitCenters=[-1.65,-.65,.35,1.35];
-const feederX=-3.76, frontLay=-2.145, landingX=2.95, deliveryY=1.209;
+// Six colour units and a coating unit in line, as on a Komori Lithrone 6+L.
+const line=1.16, r=.25, forward=1.6;
+export const UNITS=7;
+const unitCenters=Array.from({length:UNITS},(_,i)=>-1.65+i);
+const DX=UNITS-4;
+const feederX=-3.76, frontLay=-2.145, landingX=2.95+DX, deliveryY=1.209;
 const infeedStart=feederX+half-frontLay, layTime=3.81, releaseTime=4.29, acceleration=.56;
 const pitch=Math.PI*r, cadence=pitch/forward;
 const releaseEdge=landingX+half;
@@ -41,10 +44,10 @@ function makePath() {
   for(const [i,x] of unitCenters.entries()){
     arc(x,i===0?entryAngle:Math.PI,Math.PI/2);
     nips.push(raw[raw.length-1].s);
-    if(i===3) {
+    if(i===UNITS-1) {
       arc(x,Math.PI/2,exitAngle);
       const q=raw[raw.length-1];
-      curve([q.x+.121,q.y-.088],[1.76,deliveryY],[1.982,deliveryY]);
+      curve([q.x+.121,q.y-.088],[1.76+DX,deliveryY],[1.982+DX,deliveryY]);
     } else {
       arc(x,Math.PI/2,0);
       arc(x+.5,Math.PI,Math.PI*2);
@@ -106,23 +109,25 @@ export function offsetPass(root,props,machine) {
   props.sheetLoad(root,feederX,false,stockTop);
   props.sheetLoad(root,landingX,true,outputTop);
   const sheets=[];
-  const first=-4, final=Math.ceil(14/cadence);
+  const first=-9, final=Math.ceil(14/cadence);
   for(let index=first;index<=final;index++) {
     const sheet=makePressSheet(root,{flexible:true});
     // Neighbouring sheets catch the light a little differently, so each one reads in the stream.
     sheet.pivot.traverse(o=>{if(o.isMesh&&Array.isArray(o.material))o.material[0].color.setHex(index%2?0xe4dfd2:0xffffff);});
     sheets.push({sheet,index,landing:outputTop+.00145+(index-first)*stock.thickness*1.12});
   }
+  // Delivery gripper bars ride the chains with the leading edge of every sheet past the last unit.
+  const bars=Array.from({length:6},()=>machine.gripperBar());
+  const k=cadence/.7625, cupX=feederX-.22;
+  const pos={x:0,y:0,dx:1,dy:0,z:0,skew:0};
   return function update(t) {
     const phase=((t%cadence)+cadence)%cadence;
-    const pick=smooth(.10,.29,phase)*(1-smooth(.43,.67,phase));
-    const transfer=smooth(.19,.46,phase)*(1-smooth(.63,cadence,phase));
+    const transfer=smooth(.19*k,.46*k,phase)*(1-smooth(.63*k,cadence,phase));
     const layPhase=((t-layTime)%cadence+cadence)%cadence;
-    const layOpen=smooth(.425,.499,layPhase)*(1-smooth(.56,.73,layPhase));
-    const pull=smooth(.015,.16,layPhase)*(1-smooth(.36,.57,layPhase));
+    const layOpen=smooth(.425*k,.499*k,layPhase)*(1-smooth(.56*k,.73*k,layPhase));
+    const pull=smooth(.015*k,.16*k,layPhase)*(1-smooth(.36*k,.57*k,layPhase));
     const clock=forward*(t-releaseTime-acceleration*.5);
-    machine.animate(t,{travel:clock,cutaway:t>=4.29 && t<10.79?1:0,feeder:pick,
-      forwarding:transfer,lay:layOpen,sidePull:pull,offsetClock:clock});
+    let cupY=stockTop+.012, cupShift=0, barIndex=0;
     for(const item of sheets) {
       const {sheet,index,landing}=item,age=t-index*cadence;
       sheet.pivot.visible=age>=0;
@@ -132,8 +137,8 @@ export function offsetPass(root,props,machine) {
       const register=smooth(3.8,4.11,age);
       const side=(.010+.004*Math.sin(index*1.7))*(1-register);
       const skew=(.005*Math.cos(index*1.57))*(1-register);
-      const pos={x:0,y:0,dx:1,dy:0,z:0,skew:0};
       sheet.setContact(lead,path.nips);
+      let underCup=-1;
       sheet.conform((u,out)=>{
         const s=lead-length*(1-u);
         path.sample(s,pos);
@@ -157,7 +162,23 @@ export function offsetPass(root,props,machine) {
         }
         out.x=pos.x;out.y=y;out.dx=dx;out.dy=dy;
         out.z=side+skew*length*(u-.5);out.skew=skew;
+        if(Math.abs(pos.x-cupX-cupShift)<.02)underCup=Math.max(underCup,y);
       });
+      // The suckers ride on the top sheet while it is lifted, never inside it.
+      if(underCup>0 && age<1.3){
+        const grip=smooth(.02,.10,age)*(1-smooth(.62,.80,age));
+        cupY=Math.max(cupY,mix(underCup+.012,underCup+.0008,grip));
+        if(grip>.01)cupShift=Math.min(.06,lead-infeedStart);
+      }
+      // Chain grippers hold the leading edge from the last unit to the release over the pile.
+      const lastNip=path.nips[path.nips.length-1];
+      if(lead>lastNip && age<brakeTime+brakeDuration*.6 && barIndex<bars.length){
+        path.sample(lead,pos);
+        bars[barIndex++].place(pos.x,pos.y,Math.atan2(pos.dy,pos.dx));
+      }
     }
+    for(let i=barIndex;i<bars.length;i++)bars[i].place(null);
+    machine.animate(t,{travel:clock,cutaway:t>=4.29?1:0,feederY:cupY,feederX:cupShift,
+      forwarding:transfer,lay:layOpen,sidePull:pull,offsetClock:clock});
   };
 }

@@ -234,8 +234,17 @@ export function feeder(root,motion,x,downstream) {
     cylinder(head,0,1.291,z,.017,.134,paint.aluminum,'y');
     for(let i=0;i<3;i++)cylinder(head,0,1.21+i*.014,z,.021+(3-i)*.002,.010,paint.rubber,'y');
     mesh(head,new T.CylinderGeometry(.020,.032,.028,22),paint.rubber,0,1.181,z);
-    hose(root,[[rear+.052,1.298,z],[rear+.11,1.36,z],[rear+.10,1.48,z+.04],[rear,1.54,z+.04]],.006);
   }
+  // Vacuum hoses run from each sucker to the beam. They are rebuilt every frame so they flex
+  // with the head instead of staying frozen in the air.
+  const hoses=[-.32,-.19,.19,.32].map(z=>({z,mesh:hose(root,[[rear+.052,1.298,z],[rear+.11,1.36,z],[rear+.10,1.48,z+.04],[rear,1.54,z+.04]],.006)}));
+  head.userData.flex=(dx,dy)=>{
+    for(const h of hoses){
+      const z=h.z,sway=.012*Math.sin(dx*40+z*9);
+      const curve=new T.CatmullRomCurve3([[rear+.052+dx,1.298+dy,z],[rear+.12+dx*.8,1.36+dy*.7,z+sway],[rear+.10+dx*.3,1.48+dy*.25,z+.04],[rear,1.54,z+.04]].map(c=>new T.Vector3(...c)));
+      h.mesh.geometry.dispose();h.mesh.geometry=new T.TubeGeometry(curve,18,.006,7,false);
+    }
+  };
   return head;
 }
 

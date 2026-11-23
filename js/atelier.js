@@ -4,7 +4,7 @@ import {offsetLayout} from './impression.js';
 import {paperLine as line, paint as p, box, cylinder, group, mesh, bar, panel, cabinet, bolt, hose,
   feet, dial, adjustableGuide, footboard, roller, safetyLabel, controlPanel, feeder, pack} from './machines-pieces.js';
 
-const pressCenters=[-1.65,-.65,.35,1.35];
+const pressCenters=offsetLayout.unitCenters;
 
 // The pile is lowered into the bay between the guide columns. Its top and the path to the
 // registration table stay free for the separately animated sheets.
@@ -49,18 +49,22 @@ function outerPressTower(fixed,cover,x,index){
   }
 }
 
+// Ink of each unit, in press order: Pantone, black, cyan, magenta, yellow, Pantone, varnish.
+export const unitInks=[0xb5492c,0x16191a,0x0094c9,0xd3166f,0xf6c400,0x1f4a3f,0xe9e4d6];
 function offset(fixed,cover,motion,moving) {
-  feet(fixed,-2.02,1.75,.56);
-  cabinet(fixed,-.16,.288,0,4.16,.32,1.27,p.graphite,.017);
+  const n=pressCenters.length, last=pressCenters[n-1], D=last-1.35;
+  feet(fixed,-2.02,last+.40,.56);
+  const bodyFrom=-2.24,bodyTo=last+.66,bodyMid=(bodyFrom+bodyTo)/2,bodyLen=bodyTo-bodyFrom;
+  cabinet(fixed,bodyMid,.288,0,bodyLen,.32,1.27,p.graphite,.017);
   for(const z of [-.66,.66]) {
-    box(fixed,-.16,.608,z,4.15,.544,.083,p.graphite);
-    for(let i=0;i<4;i++){
-      const x=-1.68+i;
+    box(fixed,bodyMid,.608,z,bodyLen-.01,.544,.083,p.graphite);
+    for(let i=0;i<n;i++){
+      const x=pressCenters[i]-.03;
       cabinet(fixed,x,.40,z*1.071,.942,.295,.024,p.cast,.003);
       for(let j=0;j<14;j++)box(fixed,x-.356+j*.055,.399,z*1.071+.014*Math.sign(z),.026,.112,.006,p.seam);
     }
   }
-  footboard(cover,-2.07,1.91,.895);
+  footboard(cover,-2.07,last+.56,.895);
   const suction=feeder(fixed,motion,offsetLayout.feederX,true);
   const {frontLay,impressionR:ri}=offsetLayout;
   registerTable(fixed,offsetLayout.feederX+.40,frontLay+.045,1.037);
@@ -72,53 +76,75 @@ function offset(fixed,cover,motion,moving) {
   }
   for(const [index,x] of pressCenters.entries()){
     outerPressTower(fixed,cover,x,index);
+    const color=unitInks[index], coating=index===n-1;
+    const ink=new T.MeshPhysicalMaterial({color,roughness:coating?.05:.22,metalness:0,clearcoat:1,clearcoatRoughness:coating?.02:.12});
     roller(motion,x,line-ri,0,ri,1.062,p.hardened,moving,-1,true);
     roller(motion,x,line+.143,0,.143,1.064,p.pressBlanket,moving,1,true);
     roller(motion,x-.145,line+.387,-.002,.142,1.058,p.steel,moving,-1,true);
-    // The form rollers and distributing drums sit above the plate, behind the service opening.
+    // Form rollers and distributors carry this unit's own ink; the steel oscillators stay bare.
     for(const [dx,dy,r] of [[-.263,.537,.051],[-.140,.577,.057],[-.075,.523,.042],[.007,.575,.063],[.105,.652,.071],[-.050,.699,.084],[-.239,.692,.068]]){
-      cylinder(fixed,x+dx,line+dy,-.008,r,1.005,r>.065?p.hardened:p.rubber);
+      cylinder(fixed,x+dx,line+dy,-.008,r,1.005,r>.065?p.hardened:ink);
     }
     for(const [ax,ay] of [[x,line-.192],[x,line+.143],[x-.145,line+.387]]){
       cylinder(fixed,ax,ay,-.568,.038,.088,p.steel);
       cylinder(fixed,ax,ay,-.611,.060,.046,p.cast);
     }
-    // Delivery transfer below the plane is visible between printing elements.
-    if(index<3){
+    // Transfer drum between two units.
+    if(index<n-1){
       roller(motion,x+.5,line-ri,0,ri,1.05,p.hardened,moving,1,true);
       bar(fixed,[x+.22,.877,-.564],[x+.66,.888,-.564],.026,p.cast);
     }
-    // Real inking stations have opaque trays. A thin margin of ink is visible along the lip.
-    const dyes=[0x25586a,0x77384f,0x9a8143,0x282a2c];
-    const ink=new T.MeshStandardMaterial({color:dyes[index],roughness:.29,metalness:.03});
+    // Ink duct with its colour visible along the lip, and a colour tag on the far frame.
     cabinet(fixed,x+.257,1.962,-.041,.227,.077,.999,p.cast,.006);
     box(fixed,x+.257,2.003,-.041,.151,.005,.943,ink);
+    box(fixed,x,2.0,-.56,.30,.07,.012,ink);
+    box(cover,x,2.0,.71,.30,.07,.012,ink);
   }
-  // Open pile delivery, gripper-chain rails above the top sheet and four jogger fingers.
+  // Delivery: a closed frame on both sides, the chain guides fixed to it, the pile plate on the
+  // pallet below the joggers, and a hood. Nothing is left hanging.
+  const L=2.91+D;
   for(const z of [-.613,.613]){
-    for(const x of [2.39,3.46]) {
-      cabinet(fixed,x,.79,z,.117,1.31,.102,p.pearl,.009);
-      box(fixed,x,.682,z*.893,.027,1.001,.021,p.hardened);
-    }
-    panel(z>0?cover:fixed,2.91,0,z,[
-      [-.65,1.35],[.632,1.35],[.632,1.84],[.505,1.94],[-.34,1.94],[-.65,1.74]
-    ],.128,p.pearl,.009);
-    for(const y of [1.236,1.321])bar(fixed,[1.78,y,z*.853],[3.30,y,z*.853],.012,p.hardened);
-    for(const x of [2.63,3.24]) {
-      box(fixed,x,1.094,z*.866,.124,.146,.014,p.aluminum);
-      cylinder(fixed,x,1.162,z*.947,.013,.122,p.steel);
+    const owner=z>0?cover:fixed;
+    panel(owner,L,0,z,[[-1.22,.12],[.66,.12],[.66,1.94],[.505,2.04],[-.95,2.04],[-1.22,1.74]],.128,p.pearl,.009);
+    // Chain guide: a solid channel from the last unit over the pile, bolted to the frame.
+    box(fixed,L-.33,1.278,z*.86,1.62,.05,.035,p.hardened);
+    box(fixed,L-.33,1.312,z*.86,1.62,.018,.06,p.cast);
+    for(const x of [L-1.0,L-.4,L+.25])box(fixed,x,1.278,z*.93,.05,.05,.1,p.cast);
+    // Side joggers hang from the guide by a bracket.
+    for(const x of [L-.28,L+.33]) {
+      box(fixed,x,1.19,z*.875,.03,.18,.03,p.steel);
+      box(fixed,x,1.105,z*.84,.124,.12,.014,p.aluminum);
     }
   }
-  cabinet(fixed,2.37,1.715,-.23,.63,.346,.77,p.blueGray,.016);
-  cabinet(fixed,2.91,1.854,-.45,1.10,.13,.29,p.pearl,.010);
+  // Front stops hang from a cross beam joining both side frames, just above the pile.
+  box(fixed,L+.40,1.36,0,.07,.07,1.24,p.cast);
+  for(const z of [-.36,0,.36]) {
+    box(fixed,L+.40,1.27,z,.02,.11,.02,p.steel);
+    box(fixed,L+.385,1.17,z,.012,.12,.08,p.aluminum);
+  }
+  cabinet(fixed,L-.54,1.715,-.23,.63,.346,.77,p.blueGray,.016);
+  cabinet(fixed,L,1.98,0,1.30,.13,1.20,p.pearl,.010);
+  // Sheet decurler and powder bar at the entry of the delivery.
   for(const z of [-.40,-.20,0,.20,.40]) {
-    cylinder(fixed,2.485,1.344,z,.016,.19,p.aluminum,'x');
-    box(fixed,2.539,1.324,z,.077,.018,.043,p.graphite);
+    cylinder(fixed,L-.425,1.344,z,.016,.19,p.aluminum,'x');
+    box(fixed,L-.371,1.324,z,.077,.018,.043,p.graphite);
   }
-  safetyLabel(cover,2.61,1.608,.685,.105);
-  cabinet(cover,2.27,1.51,.635,.16,.286,.112,p.blueGray,.006);
-  controlPanel(cover,2.27,1.56,.725);
-  return {suction,lays};
+  box(fixed,L-.40,1.39,0,.05,.05,1.16,p.cast);
+  safetyLabel(cover,L-.30,1.608,.685,.105);
+  cabinet(cover,L-.64,1.51,.635,.16,.286,.112,p.blueGray,.006);
+  controlPanel(cover,L-.64,1.56,.725);
+  // Pile plate under the delivered pile.
+  box(fixed,L+.04,.14,0,.86,.03,1.08,p.cast);
+  // Gripper bars, made on demand by the pass so each one can follow a sheet.
+  function gripperBar() {
+    const g=group(motion);
+    box(g,0,.006,0,.03,.018,1.12,p.cast);
+    for(const z of [-.42,-.21,0,.21,.42])box(g,.012,.0,z,.02,.006,.03,p.hardened);
+    for(const z of [-.55,.55])cylinder(g,0,.006,z,.016,.03,p.steel);
+    g.visible=false;
+    return {place(x,y,a=0){ if(x===null){g.visible=false;return;} g.visible=true;g.position.set(x,y+.004,0);g.rotation.z=a; }};
+  }
+  return {suction,lays,gripperBar};
 }
 
 function endRail(fixed,x,span,z) {
@@ -457,7 +483,9 @@ function gluer(fixed,cover,motion,moving) {
   // The steel guide rods ride just outside each belt, on the outer side of the flap.
   for(const guide of [guideA,guideB])hose(fixed,guide.rods,.005,p.steel,30);
   for(const x of [-1.59,-1.36,-.69,-.37,.05,.396,.702,.998,1.257]) {
-    jockey(fixed,motion,moving,x,-.050,-1);
+    // Past the first fold the wheels move onto the flat front panel, clear of the back panel's sweep.
+    if(x>.3)jockey(fixed,motion,moving,x,.072,-1);
+    else jockey(fixed,motion,moving,x,-.050,-1);
     // The near row ends before the side-flap guide begins to turn inward.
     if(x<-.40)jockey(fixed,motion,moving,x,.071,1);
   }
@@ -504,20 +532,24 @@ export function buildStation(parent,kind) {
     parts.pins.add(parts.nearPins);
   }
   if(parts.lays)pack(parts.lays);
-  function animate(tLocal,{press=0,travel=tLocal*.28,cutaway=0,feeder:pick=0,stripping=0,lay=0}={}) {
+  function animate(tLocal,{press=0,travel=tLocal*.28,cutaway=0,feeder:pick=0,stripping=0,lay=0,feederY=null,feederX=0}={}) {
     if(parts.lays)parts.lays.position.y=-.03*lay;
     cover.visible=cutaway<.5;
     for(const {carrier,radius,sign} of moving)carrier.rotation.z=sign*travel/radius;
     if(parts.suction) {
-      parts.suction.position.y=pick*.032;
-      parts.suction.position.x=(kind==='offset'?offsetLayout.feederX-.22:-2.27)+pick*.046;
+      // On the press the suckers follow the top sheet; elsewhere a simple pick stroke.
+      const dy=feederY!==null?feederY-1.167:pick*.032, dx=feederY!==null?feederX:pick*.046;
+      parts.suction.position.y=dy;
+      parts.suction.position.x=(kind==='offset'?offsetLayout.feederX-.22:-2.27)+dx;
+      parts.suction.userData.flex?.(dx,dy);
     }
-    if(parts.platen)parts.platen.position.y=press*.044;
+    // Bobst toggle press: the upper chase stays fixed, the lower platen drops open and rises to cut.
+    if(parts.platen)parts.platen.position.y=-.05+press*.094;
     if(parts.pins) {
       parts.pins.position.y=-.121*stripping;
       parts.nearPins.visible=cover.visible;
     }
   }
   animate(0);
-  return {root,animate};
+  return {root,animate,gripperBar:parts.gripperBar};
 }

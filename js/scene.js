@@ -19,6 +19,90 @@ function floor(parent) {
   box(parent,0,-.056,0,24,.11,18,floorMat);
   for(const x of [-8,-4,0,4,8])box(parent,x,.0002,0,.007,.001,18,metal);
 }
+// Board edges seen on a packed row: a fine stripe for every carton.
+let edgeCache;
+function edgeMaterial(){
+  if(edgeCache)return edgeCache;
+  const c=document.createElement('canvas');c.width=16;c.height=64;
+  const x=c.getContext('2d');x.fillStyle='#efe9dc';x.fillRect(0,0,16,64);
+  for(let i=0;i<8;i++){x.fillStyle=i%2?'#c9bfaa':'#b3a891';x.fillRect(0,i*8,16,1.4);}
+  const map=new T.CanvasTexture(c);map.colorSpace=T.SRGBColorSpace;map.wrapS=map.wrapT=T.RepeatWrapping;map.anisotropy=8;
+  map.repeat.set(1,58/8);
+  edgeCache={side:new T.MeshStandardMaterial({map,roughness:.85}),plain:new T.MeshStandardMaterial({color:0xe9e3d6,roughness:.85})};
+  return edgeCache;
+}
+
+// The workshop around the machines: a high steel hall with a concrete floor, painted walkways,
+// skylights, racking, pallets of board and other lines in the distance. It replaces the blurred
+// photograph, so every shot has a coherent, steady background.
+function hall(scene,props) {
+  const g=group(scene);
+  const wall=coating(0xd9d8d1,.9), plinth=coating(0x5d6d68,.8), steel=coating(0x56646a,.5,.5);
+  const roof=coating(0xbfc1bd,.9), glow=new T.MeshBasicMaterial({color:0xfdf8ea});
+  const sky=new T.MeshBasicMaterial({color:0xeef1f0}), line=coating(0xe2b934,.6);
+  const orange=coating(0xd8662c,.55,.2), blue=coating(0x2f5a85,.55,.3);
+  const pearl=coating(0xdedfd9,.4,.3), graphite=coating(0x3a4042,.5,.4);
+  const board=coating(0xe6dfcd,.9), kraft=coating(0xb48a5a,.85);
+  const W=15,Dz=12,H=8.5;
+  box(g,0,-.056,0,2*W,.11,2*Dz,floorMat);
+  // Walkways painted on the floor, kept outside the machine footprints.
+  for(const z of [-7.2,-5.8,5.8,7.2])box(g,0,.001,z,2*W-2,.002,.08,line);
+  for(const x of [-10.5,-9.1,9.1,10.5])box(g,x,.001,0,.08,.002,2*Dz-2,line);
+  // Walls: a dark plinth, light cladding with ribs, a band of windows.
+  for(const s of [-1,1]){
+    box(g,0,1.2,s*Dz,2*W,2.4,.2,plinth);
+    box(g,0,5.4,s*Dz,2*W,6,.2,wall);
+    box(g,0,4.3,s*(Dz-.11),2*W-1,1.1,.02,sky);
+    box(g,s*W,1.2,0,.2,2.4,2*Dz,plinth);
+    box(g,s*W,5.4,0,.2,6,2*Dz,wall);
+    box(g,s*(W-.11),4.3,0,.02,1.1,2*Dz-1,sky);
+    for(let x=-W+1;x<W;x+=1.2)box(g,x,5.4,s*(Dz-.12),.04,6,.04,roof);
+  }
+  // Portal frames every five metres, with lamps hanging from them, and skylights between.
+  for(let x=-12.5;x<=12.5;x+=5){
+    for(const z of [-Dz+.3,Dz-.3])box(g,x,H/2,z,.3,H,.22,steel);
+    box(g,x,H-.15,0,.22,.4,2*Dz,steel);
+    for(let z=-8;z<=8;z+=4){
+      box(g,x,H-1.3,z,.02,2.2,.02,graphite);
+      const lamp=new T.Mesh(new T.CylinderGeometry(.28,.36,.22,20),graphite);lamp.position.set(x,H-2.5,z);g.add(lamp);
+      const bulb=new T.Mesh(new T.CircleGeometry(.3,20),glow);bulb.rotation.x=Math.PI/2;bulb.position.set(x,H-2.615,z);g.add(bulb);
+    }
+  }
+  box(g,0,H+.1,0,2*W,.2,2*Dz,roof);
+  for(let x=-10;x<=10;x+=5)box(g,x,H-.01,0,1.6,.02,2*Dz-2,sky);
+  // Pallet racking along the back wall: blue uprights, orange beams, loads of board and cases.
+  for(const [z,s] of [[-Dz+.8,1],[Dz-.8,-1]])for(let x=-12;x<=12;x+=2.8){
+    for(const dx of [-1.35,1.35])for(const dz of [-.5,.5])box(g,x+dx,2.6,z+dz,.08,5.2,.08,blue);
+    for(const y of [.15,1.8,3.45])for(const dz of [-.5,.5]){
+      box(g,x,y,z+dz,2.7,.12,.06,orange);
+    }
+    for(const y of [.21,1.86,3.51])for(const dx of [-.66,.66]){
+      const kind=(Math.round(x*3+y*5+dx*7)%3+3)%3;
+      if(kind===0){box(g,x+dx,y+.06,z,1.2,.12,1.0,coating(0xa77b4f,.85));box(g,x+dx,y+.5,z,1.0,.75,.95,board);}
+      else if(kind===1){box(g,x+dx,y+.06,z,1.2,.12,1.0,coating(0xa77b4f,.85));box(g,x+dx,y+.6,z,1.1,.95,.95,kraft);}
+    }
+  }
+  // Other lines in the distance: a second press, a folder-gluer and a cutting table.
+  function machine(x,z,len,h,ry){
+    const m=group(g,x,0,z);m.rotation.y=ry;
+    box(m,0,.3,0,len,.6,1.4,graphite);
+    for(let i=0;i<Math.floor(len/1.1);i++)box(m,-len/2+.55+i*1.1,h/2+.3,0,.95,h,1.5,pearl);
+    box(m,0,h+.4,0,len,.12,1.0,coating(0x8f989e,.4,.4));
+    box(m,len/2+.4,.7,0,.6,1.4,1.2,pearl);
+  }
+  machine(-6,-9.2,7.5,1.7,0);
+  machine(7,-9.2,5,1.1,0);
+  machine(-7,9.2,6,1.3,0);
+  machine(6,9.2,4,1.0,0);
+  // Pallets waiting on the floor along the walls.
+  for(const [x,z] of [[-13.4,-6],[-13.4,-3.6],[-13.4,3.6],[13.4,-4.8],[13.4,2.4],[13.4,4.8],[-13.4,6]]){
+    const p=props.pallet(g,x,z);
+    box(p,0,.6,0,1.0,.95,1.05,(x+z)%2?board:kraft);
+  }
+  g.traverse(o=>{if(o.isMesh)o.receiveShadow=true;});
+  return g;
+}
+
 function folded(carton,x,y,z,extra={}) {
   carton.pose({x,y,z,roll:Math.PI,foldLeft:1,foldBack:1,glue:1,...extra});
 }
@@ -36,7 +120,6 @@ function unpackingPosition(s){
 function stationSet(scene,id,props) {
   const root=group(scene);
   root.rotation.y=[.35,-1.05,1.52,-.52,2.63][id];
-  floor(root);
   const kind=['offset','decoupe','collage'][id];
   const machine=kind?buildStation(root,kind):null;
   let update;
@@ -61,7 +144,9 @@ function stationSet(scene,id,props) {
       const incline=along=>.046*ease(1.82,2.07,along);
       const surface=angle=>paperY+.0012+.183*Math.sin(angle);
       const angle=incline(x);
-      carton.pose({x,y:surface(angle),z:0,roll:Math.PI,rise:angle,foldLeft:ease(-.73,.30,x),foldBack:ease(.29,1.43,x),open:0,close:0,glue:depositAt(x)});
+      // The flap takes the fold of the belt at its leading end, so the belt never runs through it.
+      const lead=x+.0975;
+      carton.pose({x,y:surface(angle),z:0,roll:Math.PI,rise:angle,foldLeft:ease(-.73,.30,lead),foldBack:ease(.29,1.43,lead),open:0,close:0,glue:depositAt(x)});
       valve(x);
       shingle.forEach((next,i)=>{
         const lead=x+(i+1)*.091;
@@ -73,11 +158,19 @@ function stationSet(scene,id,props) {
   }else if(id===3){
     const table=group(root);
     packingTable(table,props);
-    const pack=props.crate(table,0,benchHeight,0), carton=makeCarton(table);
-    for(let i=0;i<16;i++) {
-      const sample=makeCarton(table);
-      folded(sample,0,benchHeight+.007+i*.0034,0);
+    const pack=props.crate(table,0,benchHeight,0);
+    // Packed by hand: two piles of flat cartons laid lengthwise in the case, side by side.
+    // The first pile is already in; the last one is lowered into its place.
+    const edges=edgeMaterial(), floorY=benchHeight+.006, count=58, pileH=count*.0034;
+    function pile(parent,z){
+      const g=group(parent,0,0,z);
+      const b=box(g,0,pileH/2,0,.36,pileH,.212,[edges.side,edges.side,edges.plain,edges.plain,edges.side,edges.side]);
+      b.castShadow=b.receiveShadow=true;
+      folded(makeCarton(g),0,pileH+.0012,0);
+      return g;
     }
+    pile(table,-.113).position.y=floorY;
+    const last=pile(table,.113);    const carton={pose(){}};
     const dock=group(root);
     const van=props.vehicle(dock);van.position.z=-4;
     box(dock,-2.86,1.073,-4,1.50,.065,2.23,metal);
@@ -87,7 +180,8 @@ function stationSet(scene,id,props) {
     update=t=>{
       const s=t-38,placing=ease(0,1.38,s),loading=ease(4.3,6.95,s);
       table.visible=t<42;dock.visible=!table.visible;
-      folded(carton,0,mix(benchHeight+.40,benchHeight+.0614,placing),mix(.012,0,placing));
+      last.position.set(mix(.03,0,placing),floorY+mix(.34,0,placing),.113+mix(.06,0,placing));
+      last.rotation.x=mix(.16,0,ease(.15,1,placing));
       pack.close(ease(1.42,3.91,s));
       load.position.set(mix(-3.20,-1.05,loading),1.106,-4);
       van.position.x=ease(6.2,7,s)*.21;
@@ -112,12 +206,12 @@ function stationSet(scene,id,props) {
 const shots=[
   [0,0,[-2.97,.79,.02],[-1.28,.66,1.20],2.98,2.49],
   [2.45,0,[-2.55,1.17,.02],[.95,.2,.42],.9,.78],
-  [4.7,0,[-.15,1.12,0],[.28,1.15,1],1.65,1.45],
-  [7,0,[.85,1.12,0],[.28,1.15,1],1.65,1.45],
-  [9.1,0,[2.91,1.095,0],[1.28,.77,.08],1.61,1.51],
-  [11.7,0,[2.95,.75,.04],[1.29,.73,.18],2.11,2.42],
+  [4.7,0,[-.15,1.10,0],[.04,.42,1],2.35,2.15],
+  [7,0,[.85,1.20,0],[.22,.85,1],2.45,2.25],
+  [9.1,0,[5.85,1.12,0],[.85,.85,1],1.85,1.70],
+  [11.7,0,[5.95,.95,0],[1.05,.50,1],2.45,2.65],
   [14,1,[-1.87,.91,.02],[-.98,.63,1.32],2.12,1.75],
-  [17.9,1,[-.55,1.17,-.05],[-.21,.31,1],.96,.84],
+  [17.9,1,[-.55,1.14,-.05],[-.25,.17,1],1.25,1.10],
   [20.75,1,[.55,.90,.05],[.30,.30,1],1.62,1.50],
   [23.6,1,[1.65,1.10,0],[.62,.62,.62],1.45,1.30],
   [26,2,[-2.60,1.20,0],[-.51,.38,.70],1.12,.87],
@@ -155,11 +249,14 @@ export async function atelierRenderer(canvas) {
   const loader=new T.TextureLoader();
   const [env,wood,concrete]=await Promise.all([new RGBELoader().loadAsync(stockPath+'atelier.hdr'),loader.loadAsync(stockPath+'bois.webp'),loader.loadAsync(stockPath+'sol.webp')]);
   env.mapping=T.EquirectangularReflectionMapping;
-  scene.environment=scene.background=env;scene.backgroundBlurriness=.075;scene.backgroundIntensity=.43;
-  concrete.colorSpace=T.SRGBColorSpace;concrete.wrapS=concrete.wrapT=T.RepeatWrapping;concrete.repeat.set(9,7);concrete.anisotropy=8;
+  // The photographed workshop only lights and reflects; the hall itself is modelled.
+  scene.environment=env;scene.environmentIntensity=.9;
+  scene.background=new T.Color(0xcfcdc5);scene.fog=new T.Fog(0xcfcdc5,11,34);
+  concrete.colorSpace=T.SRGBColorSpace;concrete.wrapS=concrete.wrapT=T.RepeatWrapping;concrete.repeat.set(11,9);concrete.anisotropy=8;
   floorMat.map=concrete;floorMat.color.set(0xb6b8b0);
   wood.colorSpace=T.SRGBColorSpace;wood.anisotropy=8;
   const props=loadingProps(wood),sets=new Map();
+  hall(scene,props);
   const sun=new T.DirectionalLight(0xfff2e1,.98);
   sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
   Object.assign(sun.shadow.camera,{near:.05,far:25,left:-2,right:2,top:2,bottom:-2});
@@ -186,8 +283,9 @@ export async function atelierRenderer(canvas) {
     }
     const v=ease(start,end,t),vertical=w/h<1.22;
     const aim=vector(...p), direction=vector(...axis).normalize();
-    if(k===2)aim.x=mix(-1.75,-.30,v);
-    if(k===3)aim.x=mix(.46,1.45,v);
+    // Follow one sheet through the first units, then sweep along the six colours and the varnish.
+    if(k===2)aim.x=mix(-1.9,.45,v);
+    if(k===3)aim.x=mix(.7,4.5,v);
     // Track the stock from the feeder until the next tool takes over.
     if(start===14){
       const advance=ease(15.35,18.55,t);
@@ -207,10 +305,10 @@ export async function atelierRenderer(canvas) {
     let distance=mix(from,to,v)*(vertical?1.20:1);
     // Establish each freestanding machine before cutting in to its tool path.
     if((t>=4 && t<4.7)||(t>=14 && t<15.65)||(t>=26 && t<27.55)){
-      const midpoint=id===0?-.08:id===1?-.10:.02;
+      const midpoint=id===0?1.35:id===1?-.10:.02;
       aim.set(midpoint,1.11,0);
       direction.set(id===1?-1.1:-1.48,.65,2.1).normalize();
-      distance=(id===0?7.9:id===1?5.7:6.75)*(vertical?1.23:1);
+      distance=(id===0?10.6:id===1?5.7:6.75)*(vertical?1.23:1);
     }
     aim.applyAxisAngle(vector(0,1,0),set.root.rotation.y);
     direction.applyAxisAngle(vector(0,1,0),set.root.rotation.y);

@@ -263,25 +263,31 @@ export function materials() { return textureLibrary(); }
 
 export function sheetMaterial() {
   const material=textureLibrary().plainSheet.clone(),ink={value:1};
-  const leadingEdges={value:new T.Vector4()},atContact={value:0};
+  // Seven printing units in press order: Pantone, black, cyan, magenta, yellow, Pantone, varnish.
+  const leadingEdges={value:new T.Vector4()},laterEdges={value:new T.Vector4()},atContact={value:0};
   material.onBeforeCompile=shader=>{
-    Object.assign(shader.uniforms,{inkCoverage:ink,inkFronts:leadingEdges,inkAtContact:atContact});
-    shader.fragmentShader='uniform float inkCoverage,inkAtContact; uniform vec4 inkFronts;\n'+shader.fragmentShader.replace(
+    Object.assign(shader.uniforms,{inkCoverage:ink,inkFronts:leadingEdges,inkFronts2:laterEdges,inkAtContact:atContact});
+    shader.fragmentShader='uniform float inkCoverage,inkAtContact; uniform vec4 inkFronts,inkFronts2;\nfloat sheetVarnish=0.;\n'+shader.fragmentShader.replace(
       '#include <map_fragment>',[
         'vec3 substrate=vec3(0.90466,0.87962,0.79130);',
         'vec3 whole=texture2D(map, vMapUv).rgb;',
         'vec3 reflectance=clamp(whole/substrate,vec3(.001),vec3(1.0));',
         'float black=1.0-max(max(reflectance.r,reflectance.g),reflectance.b);',
         'vec3 cmys=1.0-reflectance/max(.001,1.0-black);',
-        'vec4 flatInk=clamp(inkCoverage*4.0-vec4(0.,1.,2.,3.),0.,1.);',
         'float width=max(.00042,fwidth(vMapUv.y)*.58);',
-        'vec4 passes=smoothstep(inkFronts-vec4(width),inkFronts+vec4(width),vec4(vMapUv.y));',
-        'vec4 transfer=mix(flatInk,passes,inkAtContact);',
-        'diffuseColor.rgb *= substrate*(1.0-transfer.rgb*cmys)*(1.0-transfer.a*black);'
-      ].join('\n'));
+        'vec4 f1=mix(vec4(inkCoverage),smoothstep(inkFronts-vec4(width),inkFronts+vec4(width),vec4(vMapUv.y)),inkAtContact);',
+        'vec4 f2=mix(vec4(inkCoverage),smoothstep(inkFronts2-vec4(width),inkFronts2+vec4(width),vec4(vMapUv.y)),inkAtContact);',
+        'float spot1=1.-smoothstep(.05,.14,distance(whole,vec3(.40,.085,.04)));',
+        'float spot2=1.-smoothstep(.025,.06,distance(whole,vec3(.014,.036,.031)));',
+        'vec3 print=substrate*(1.0-vec3(f1.z,f1.w,f2.x)*cmys)*(1.0-f1.y*black);',
+        'print=mix(print,mix(substrate,whole,f1.x),spot1);',
+        'print=mix(print,mix(substrate,whole,f2.y),spot2*(1.-spot1));',
+        'sheetVarnish=f2.z;',
+        'diffuseColor.rgb *= print;'
+      ].join('\n')).replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,.16,sheetVarnish);');
   };
-  material.customProgramCacheKey=()=>'larre-offset-nip-cmyk';
-  return {material,ink,leadingEdges,atContact};
+  material.customProgramCacheKey=()=>'larre-offset-nip-7';
+  return {material,ink,leadingEdges,laterEdges,atContact};
 }
 
 export const blankUV = (z,x) => [.5+z/blankSize.z,.5+x/blankSize.x];
