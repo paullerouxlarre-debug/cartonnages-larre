@@ -377,7 +377,7 @@ export async function inkScene(canvas) {
       const k = ease(.9 + seed * .01, 1, p);
       c.pivot.visible = k > 0;
       if (!k) return;
-      const a = seed / 7 * Math.PI * 2 + p * 1.5, r = mix(1.8, .36 + rand(seed) * .22, k);
+      const a = seed / 7 * Math.PI * 2 + p * 1.5, r = mix(1.8, 1.0 + rand(seed) * .35, k);
       c.pose({x: Math.cos(a) * r, y: SHEET_Y - .12 + rand(seed + 3) * .34 + Math.sin(clock * .7 + seed) * .02, z: Math.sin(a) * r - .1,
         rise: Math.PI / 2, yaw: a * 1.3 + p * 3, foldLeft: 1, foldBack: 1, glue: 1, open: 1, close: 1});
       c.pivot.scale.setScalar(.5 + rand(seed + 9) * .15);
@@ -399,7 +399,8 @@ export async function inkScene(canvas) {
     const close = ease(.6, .63, p) * (1 - ease(.675, .705, p));
     if (close > 0 && glueBead) target.lerp(glueBead.parent.localToWorld(tmp.set(0, 0, -stock.tab * .5)), close * .6);
     const orbit = mix(-.35, .2, ease(0, .5, p)) + ease(.6, 1, p) * .7;
-    const dist = (mix(1.75, 1.5, ease(.04, .3, p)) * (1 - onBox) + mix(.98, 1.05, ease(.77, .9, p)) * onBox + ease(.9, 1, p) * .3) * (1 - .2 * close) * (portrait ? 1.55 : 1);
+    // The subject is shown large: the sheet fills the frame, the finished box overflows it.
+    const dist = (mix(1.3, 1.18, ease(.04, .3, p)) * (1 - onBox) + mix(.98, .6, ease(.77, .9, p)) * onBox - ease(.9, 1, p) * .2) * (1 - .2 * close) * (portrait ? 1.55 : 1);
     const elev = mix(1.05, .62, ease(.02, .3, p)) * (1 - onBox) + mix(.8, .32, ease(.74, .9, p)) * onBox;
     camera.position.set(target.x + Math.sin(orbit) * dist * Math.cos(elev), target.y + Math.sin(elev) * dist, target.z + Math.cos(orbit) * dist * Math.cos(elev));
     camera.lookAt(target);
