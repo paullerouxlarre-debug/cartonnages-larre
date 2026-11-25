@@ -321,7 +321,7 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 .masthead-inner::after { background: rgb(27 43 41 / 18%); }
 .masthead .nav-contact { border-color: rgb(27 43 41 / 55%); color: #1b2b29; }
 .masthead .nav-contact:hover { background: #1b2b29; color: var(--paper); }
-.encre { position: relative; height: 500vh; background: #ddd3c2; color: #1b2b29; }
+.encre { position: relative; height: 100svh; background: #ddd3c2; color: #1b2b29; }
 .encre-scene { position: sticky; top: 0; height: 100svh; overflow: hidden; }
 /* Paper grain over the studio and the range: a physical surface instead of flat colour. */
 .gamme::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: url(images/papier.webp) 0 0 / 512px; mix-blend-mode: multiply; opacity: .55; }
@@ -346,7 +346,7 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 .encre-teinte .nuance { grid-row: span 2; width: clamp(4.2rem, 7vw, 6.4rem); aspect-ratio: 3 / 4; background: linear-gradient(var(--teinte) 0 72%, #f4efe5 72%); box-shadow: 0 18px 40px rgb(0 0 0 / 18%); border: 1px solid rgb(0 0 0 / 8%); }
 .encre-teinte b { font: 700 clamp(3.6rem, 10vw, 9rem)/.85 var(--display); text-transform: uppercase; letter-spacing: -.035em; color: var(--teinte); }
 .encre-teinte small, .encre-etape small { font: .82rem var(--mono); letter-spacing: .1em; text-transform: uppercase; color: #3a4b47; }
-.encre-etape { bottom: clamp(3rem, 12vh, 7rem); display: flex; flex-direction: column; gap: .8rem; }
+.encre-etape { bottom: clamp(5.5rem, 14vh, 8rem); display: flex; flex-direction: column; gap: .8rem; }
 .encre-etape b { font: 700 clamp(3.4rem, 9vw, 8.4rem)/.86 var(--display); text-transform: uppercase; letter-spacing: -.03em; }
 .encre-etape b em { font: italic 400 1.05em/.86 "Instrument Serif", Georgia, serif; text-transform: none; color: #c64a25; }
 .encre-etape.fin { pointer-events: auto; align-items: flex-start; }
@@ -375,9 +375,8 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 .encre-rail li.actif { color: #1b2b29; }
 .encre-rail li.actif::after { transform: scaleX(1); background: #c64a25; }
 @media (max-width: 720px) {
-  .encre { height: 500vh; }
   .encre-titre { top: 6.2rem; }
-  .encre-teinte, .encre-etape { bottom: 2.6rem; }
+  .encre-teinte, .encre-etape { bottom: 8.6rem; }
   .encre-texte > .encre-rail { top: 5.2rem; gap: .8rem; font-size: .62rem; }
   .encre-rail li:not(.actif) { font-size: 0; }
   .encre-rail li:not(.actif) span { font-size: .62rem; margin: 0; }
@@ -452,7 +451,6 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 }
 
 /* Ouverture en chapitres : chaque arrêt de défilement lance un chapitre du film. */
-.encre-arret { position: absolute; left: 0; width: 1px; height: 1px; top: calc(var(--k) * (100% - 100svh) / 4); }
 .encre .encre-avance { opacity: 0; transition: opacity .5s; bottom: clamp(1.2rem, 4vh, 2.4rem); padding: .75rem 1.2rem; border-radius: 99px; background: rgb(27 43 41 / 88%); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgb(30 30 20 / 18%); color: #f4efe5; font-size: .82rem; white-space: nowrap; }
 .encre .encre-avance.visible { opacity: 1; }
 .encre .encre-avance::after { content: "↓"; font-size: 1rem; animation: indice-bas 1.6s ease-in-out infinite; }
@@ -483,3 +481,25 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 /* La boîte terminée se tourne à la main. */
 .encre.tournable .encre-scene { cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 .encre.tourne .encre-scene { cursor: grabbing; }
+
+/* Pendant l'ouverture, la page reste en haut : les gestes jouent les étapes. */
+html.encre-tenue, html.encre-tenue body { overflow: hidden; overscroll-behavior: none; }
+.encre-rail button { all: unset; cursor: pointer; display: inline; pointer-events: auto; }
+.encre-rail button:focus-visible { outline: 2px solid #1b2b29; outline-offset: 4px; }
+.encre-rail li:hover { color: #1b2b29; }
+.encre-barre { position: absolute; left: var(--gutter); right: var(--gutter); bottom: clamp(1.2rem, 4vh, 2.4rem); display: flex; align-items: center; justify-content: center; gap: .8rem; pointer-events: none; }
+.encre .encre-barre .encre-avance { position: static; transform: none; bottom: auto; left: auto; pointer-events: none; }
+.encre-cmd { pointer-events: auto; font: .68rem var(--mono); letter-spacing: .08em; text-transform: uppercase; color: #2f403c; background: rgb(255 253 248 / 55%); border: 1px solid rgb(27 43 41 / 18%); border-radius: 99px; padding: .55rem .85rem; cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); white-space: nowrap; transition: opacity .4s; }
+.encre-cmd:hover { background: rgb(255 253 248 / 90%); color: #1b2b29; }
+.encre-cmd:focus-visible { outline: 2px solid #1b2b29; outline-offset: 2px; }
+/* « Étape précédente » n'apparaît qu'après la première étape. */
+.encre-cmd[data-cmd=retour] { opacity: calc(min(1, (var(--p, 0) - .035) * 40)); }
+.encre:not(.lance) .encre-cmd[data-cmd=retour] { display: none; }
+.encre-fixe .encre-barre { display: none; }
+@media (max-width: 720px) { .encre-barre { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; } .encre-barre .encre-avance { grid-column: 1 / -1; grid-row: 1; justify-self: center; } .encre-cmd { font-size: .6rem; padding: .45rem .7rem; justify-self: center; } }
+html { scrollbar-gutter: stable; }
+.encre:not(.lance) .encre-rail button { pointer-events: none; }
+.encre.fini .encre-cmd[data-cmd=passer] { visibility: hidden; }
+/* La pastille remplace le lien « Continuez » quand l'ouverture est pilotée. */
+.encre-prete:not(.encre-fixe) .encre-suite { display: none; }
+@media (max-width: 720px) { .encre .encre-barre .encre-avance { white-space: normal; text-align: center; max-width: 100%; line-height: 1.4; } }

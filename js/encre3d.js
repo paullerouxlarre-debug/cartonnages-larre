@@ -277,16 +277,17 @@ export async function inkScene(canvas) {
 
   let width = 0, height = 0;
   function draw(progress, clock = 0, view = {}) {
-    const userYaw = view.yaw || 0, userTilt = view.tilt || 0;
+    const userYaw = view.yaw || 0, userTilt = view.tilt || 0, userZoom = view.zoom || 0;
     const w = canvas.clientWidth, h = canvas.clientHeight;
     if (w !== width || h !== height) {
       width = w; height = h;
       renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75)); renderer.setSize(w, h, false);
       camera.aspect = w / h;
-      // In landscape the captions sit on the left: shift the picture towards the right.
-      if (w / h > 1.1) camera.setViewOffset(w, h, -w * .1, 0, w, h); else camera.clearViewOffset();
-      camera.updateProjectionMatrix();
     }
+    // In landscape the captions sit on the left: shift the picture towards the right,
+    // a little more for the finished box so the closing title never covers it.
+    if (w / h > 1.1) camera.setViewOffset(w, h, -w * (.1 + .09 * ease(.88, 1, progress)), 0, w, h); else camera.clearViewOffset();
+    camera.updateProjectionMatrix();
     let p = clamp(progress);
     const portrait = w / h < .9, pPrint = p;
 
@@ -337,7 +338,10 @@ export async function inkScene(canvas) {
       const u = ease(DROP[0] + delay, DROP[1] + delay, p), g = u * u;
       const out = f.carrier ? 0 : 1;
       const dir = tmp.set(f.p0.x, 0, f.p0.z).normalize();
-      f.mesh.position.set(f.p0.x + dir.x * .12 * u * out, f.p0.y - (SHEET_Y - .0006 * (1 + f.i % 3)) * g, f.p0.z + dir.z * .12 * u * out);
+      // Once the cut is over, the waste is cleared out of frame so the folding and the box stand alone.
+      const clear = ease(.608, .64, p), ax = f.p0.x - hp.x, az = f.p0.z - hp.z, an = Math.hypot(ax, az) || 1;
+      f.mesh.position.set(f.p0.x + dir.x * .12 * u * out + ax / an * 2.4 * clear, f.p0.y - (SHEET_Y - .0006 * (1 + f.i % 3)) * g, f.p0.z + dir.z * .12 * u * out + az / an * 2.4 * clear);
+      f.mesh.visible = clear < .999;
       const tumble = Math.sin(Math.PI * u) * (f.carrier ? .05 : .5);
       f.mesh.rotation.set(f.r0.x + tumble * (f.i % 2 ? 1 : -1), f.r0.y + u * (f.i % 3 - 1) * .4, f.r0.z + tumble * .6);
     }
@@ -360,7 +364,7 @@ export async function inkScene(canvas) {
     // Turn the flat pose so the glue tab and the folds face the camera.
     const turn = TURN * ease(.615, .655, p) * (1 - ease(.79, .85, p));
     hero.pivot.visible = heroIsBox;
-    hero.pose({x: 0, y: SHEET_Y + lift, z: 0, rise: stand * Math.PI / 2, yaw: spin + turn + userYaw,
+    hero.pose({x: 0, y: SHEET_Y + lift, z: 0, rise: stand * Math.PI / 2, yaw: spin + turn,
       foldLeft: fold, foldBack: back, glue: 0, open, closeBottom: shutB, closeTop: shutT});
     // The glue thread follows the head of the bead along the tab.
     const run = tabRun * glue, x0 = -tabRun / 2;
@@ -402,9 +406,12 @@ export async function inkScene(canvas) {
     // Close in on the glue tab while the bead is laid.
     const close = ease(.62, .645, p) * (1 - ease(.69, .72, p));
     if (close > 0 && glueBead) target.lerp(glueBead.parent.localToWorld(tmp.set(0, 0, -stock.tab * .5)), close * .6);
-    const orbit = mix(-.35, .2, ease(0, .44, p)) + ease(.605, .78, p) * .35 + ease(.79, 1, p) * .35;
+    // The visitor turns the finished box: the camera circles around its centre, so it stays in frame.
+    const orbit = mix(-.35, .2, ease(0, .44, p)) + ease(.605, .78, p) * .35 + ease(.79, 1, p) * .35 - userYaw;
     // The subject is shown large: the sheet fills the frame, the finished box overflows it.
-    const dist = (mix(1.3, 1.18, ease(.04, .3, p)) * (1 - onBox) + mix(.98, .6, ease(.79, .9, p)) * onBox - ease(.9, 1, p) * .2) * (1 - .2 * close) * (portrait ? 1.55 : 1);
+    const dist = (mix(1.3, 1.18, ease(.04, .3, p)) * (1 - onBox) + mix(.98, .6, ease(.79, .9, p)) * onBox - ease(.9, 1, p) * .2) * (1 - .2 * close) * (portrait ? 1.55 + .6 * ease(.88, 1, p) : 1)
+      // Step back a little while the box is being turned, so every face stays in frame.
+      * (1 + .32 * userZoom);
     const elev = mix(1.05, .62, ease(.02, .3, p)) * (1 - onBox) + mix(.8, .32, ease(.79, .9, p)) * onBox + userTilt;
     camera.position.set(target.x + Math.sin(orbit) * dist * Math.cos(elev), target.y + Math.sin(elev) * dist, target.z + Math.cos(orbit) * dist * Math.cos(elev));
     camera.lookAt(target);
