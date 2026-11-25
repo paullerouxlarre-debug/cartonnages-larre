@@ -321,11 +321,12 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 .masthead-inner::after { background: rgb(27 43 41 / 18%); }
 .masthead .nav-contact { border-color: rgb(27 43 41 / 55%); color: #1b2b29; }
 .masthead .nav-contact:hover { background: #1b2b29; color: var(--paper); }
-.encre { position: relative; height: 400vh; background: #ddd3c2; color: #1b2b29; }
+.encre { position: relative; height: 500vh; background: #ddd3c2; color: #1b2b29; }
 .encre-scene { position: sticky; top: 0; height: 100svh; overflow: hidden; }
 /* Paper grain over the studio and the range: a physical surface instead of flat colour. */
-.encre-scene::after, .gamme::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: url(images/papier.webp) 0 0 / 512px; mix-blend-mode: multiply; opacity: .55; }
-.encre-scene::after { z-index: 1; }
+.gamme::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: url(images/papier.webp) 0 0 / 512px; mix-blend-mode: multiply; opacity: .55; }
+/* The studio paper sits behind the transparent 3D canvas: the grain stays on the background, never on the sheet. */
+.encre-scene { background: #efe8dc url(images/papier-doux.webp) 0 0 / 512px; background-blend-mode: multiply; }
 .gamme::before { z-index: -1; }
 .encre-texte { z-index: 2; }
 #encre-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -374,7 +375,7 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 .encre-rail li.actif { color: #1b2b29; }
 .encre-rail li.actif::after { transform: scaleX(1); background: #c64a25; }
 @media (max-width: 720px) {
-  .encre { height: 400vh; }
+  .encre { height: 500vh; }
   .encre-titre { top: 6.2rem; }
   .encre-teinte, .encre-etape { bottom: 2.6rem; }
   .encre-texte > .encre-rail { top: 5.2rem; gap: .8rem; font-size: .62rem; }
@@ -452,7 +453,7 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 
 /* Ouverture en chapitres : chaque arrêt de défilement lance un chapitre du film. */
 html { scroll-snap-type: y proximity; }
-.encre-arret { position: absolute; left: 0; width: 1px; height: 1px; top: calc(var(--k) * (100% - 100svh) / 3); scroll-snap-align: start; scroll-snap-stop: always; }
+.encre-arret { position: absolute; left: 0; width: 1px; height: 1px; top: calc(var(--k) * (100% - 100svh) / 4); scroll-snap-align: start; scroll-snap-stop: always; }
 .encre .encre-avance { opacity: 0; transition: opacity .5s; }
 .encre .encre-avance.visible { opacity: 1; }
 

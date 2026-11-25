@@ -232,7 +232,7 @@ function lens(scene,renderer) {
     fragmentShader:`varying vec2 coord;uniform sampler2D colour,depthMap;uniform vec2 pixel;uniform float focus,near,far;
     void main(){float d=texture2D(depthMap,coord).r;float z=near*far/(far-d*(far-near));float blur=min(5.,abs(1.-focus/z)*4.2);
     vec3 c=texture2D(colour,coord).rgb*2.;for(int i=0;i<12;i++){float a=float(i)*2.39996;vec2 p=vec2(cos(a),sin(a))*sqrt((float(i)+.5)/12.);c+=texture2D(colour,coord+pixel*blur*p).rgb;}
-    c/=14.; c*=1.-.115*dot(coord-.5,coord-.5);gl_FragColor=vec4(c,1.);
+    c/=14.; c*=1.-.06*dot(coord-.5,coord-.5);gl_FragColor=vec4(c,1.);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
     }`});
@@ -243,7 +243,7 @@ function lens(scene,renderer) {
 
 export async function atelierRenderer(canvas) {
   const renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
-  renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.81;
+  renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.02;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
   const scene=new T.Scene();
   const loader=new T.TextureLoader();
@@ -251,17 +251,18 @@ export async function atelierRenderer(canvas) {
   env.mapping=T.EquirectangularReflectionMapping;
   // The photographed workshop only lights and reflects; the hall itself is modelled.
   scene.environment=env;scene.environmentIntensity=.9;
-  scene.background=new T.Color(0xcfcdc5);scene.fog=new T.Fog(0xcfcdc5,11,34);
+  scene.background=new T.Color(0xdcdad3);scene.fog=new T.Fog(0xdcdad3,13,38);
   concrete.colorSpace=T.SRGBColorSpace;concrete.wrapS=concrete.wrapT=T.RepeatWrapping;concrete.repeat.set(11,9);concrete.anisotropy=8;
-  floorMat.map=concrete;floorMat.color.set(0xb6b8b0);
+  floorMat.map=concrete;floorMat.color.set(0xcfd0c8);
   wood.colorSpace=T.SRGBColorSpace;wood.anisotropy=8;
   const props=loadingProps(wood),sets=new Map();
   hall(scene,props);
-  const sun=new T.DirectionalLight(0xfff2e1,.98);
+  const sun=new T.DirectionalLight(0xfff2e1,1.25);
   sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
   Object.assign(sun.shadow.camera,{near:.05,far:25,left:-2,right:2,top:2,bottom:-2});
   sun.shadow.normalBias=.00022;sun.shadow.bias=-.00009;scene.add(sun,sun.target);
-  scene.add(new T.HemisphereLight(0xeaf0ff,0x857a6e,.12));
+  // A bright, even workshop: skylight fill plus the key light.
+  scene.add(new T.HemisphereLight(0xf2f5ff,0x9a8f80,.42));
   const camera=new T.PerspectiveCamera(38,1,.012,90),grading=lens(scene,renderer);
   let width=0,height=0,previous=-1;
   function draw(time,turn=0){

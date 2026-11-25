@@ -8,9 +8,10 @@ const labels = [...section.querySelectorAll("[data-from]")].map(el => ({el, from
 // Chapter ends in scene time, their playing time in seconds, and the hint shown once each one is over.
 const chapters = [
   {end: 0, seconds: 1, hint: "Faites défiler : l’impression commence"},
-  {end: .52, seconds: 15, hint: "Défilez : la découpe"},
-  {end: .663, seconds: 5.5, hint: "Défilez : le pliage-collage"},
-  {end: 1, seconds: 10, hint: ""}
+  {end: .512, seconds: 15, hint: "Défilez : la découpe"},
+  {end: .658, seconds: 6, hint: "Défilez : le pliage-collage"},
+  {end: .814, seconds: 6, hint: "Défilez : l’étui prend forme"},
+  {end: 1, seconds: 9, hint: ""}
 ];
 const hint = document.getElementById("encre-indice"), hintBox = hint?.parentElement;
 const steps = [...section.querySelectorAll("[data-actif]")].map(el => { const [from, to] = el.dataset.actif.split(",").map(Number); return {el, from, to}; });
@@ -28,13 +29,17 @@ function fade(items, t) {
   }
 }
 
+let clockIn = -1, local = 0;
+// Gentle start and a long settle: the motion comes to rest on the chapter's last frame.
+const easeChapter = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(2 - 2 * u, 3) / 2;
+const invEase = v => { let a = 0, b = 1; for (let i = 0; i < 24; i++) { const m = (a + b) / 2; if (easeChapter(m) < v) a = m; else b = m; } return (a + b) / 2; };
 let scene = null, progress = 0, frame = 0, visible = true, failed = false, chapter = 0, last = 0;
 function measure() {
   const box = section.getBoundingClientRect();
   const travel = Math.max(1, section.offsetHeight - innerHeight);
   const t = clamp(-box.top / travel);
   // Four scroll stops: rest, then one per chapter. A small scroll is enough to start the next one.
-  chapter = t < .04 ? 0 : t < .45 ? 1 : t < .78 ? 2 : 3;
+  chapter = t < .03 ? 0 : t < .35 ? 1 : t < .6 ? 2 : t < .85 ? 3 : 4;
   visible = box.bottom > 0 && box.top < innerHeight;
 }
 function advance(now) {
@@ -42,10 +47,15 @@ function advance(now) {
   const target = chapters[chapter].end;
   if (progress < target) {
     // Play forward at the pace of the chapter being played.
-    const k = chapters.findIndex(c => c.end > progress + 1e-6);
-    const c = chapters[Math.max(1, k)], prev = chapters[Math.max(0, k - 1)];
-    progress = Math.min(target, progress + dt * (c.end - prev.end) / c.seconds);
+    // Each chapter plays on its own clock and eases into a settled frame at its end.
+    const k = Math.max(1, chapters.findIndex(c => c.end > progress + 1e-6));
+    const c = chapters[k], prev = chapters[k - 1], span = c.end - prev.end;
+    clockIn = clockIn === k ? k : (local = invEase((progress - prev.end) / span), k);
+    local = Math.min(1, local + dt / c.seconds);
+    progress = Math.min(target, prev.end + span * easeChapter(local));
+    if (local >= 1) progress = c.end;
   } else if (progress > target) {
+    clockIn = -1;
     progress = Math.max(target, progress - dt * .35);
   }
   return progress !== target;
@@ -76,7 +86,7 @@ async function start() {
   }
   if (!scene && !failed) {
     try {
-      const {inkScene} = await import("./encre3d.js?v=8");
+      const {inkScene} = await import("./encre3d.js?v=9");
       scene = await inkScene(canvas);
       document.documentElement.classList.add("encre-prete");
     } catch (error) {

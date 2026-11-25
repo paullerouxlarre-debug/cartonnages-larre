@@ -22,8 +22,8 @@
   <link rel="preload" as="fetch" crossorigin href="assets/matieres/atelier.hdr">
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/barlow-condensed-bold.woff2">
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/instrument-serif-italic.woff2">
-  <link rel="stylesheet" href="assets/visite.css?v=10">
-  <script type="module" src="js/accueil.js?v=9"></script>
+  <link rel="stylesheet" href="assets/visite.css?v=11">
+  <script type="module" src="js/accueil.js?v=10"></script>
 </head>
 <body>
   <a class="skip" href="#encre">Aller à la fabrique d’une boîte</a>
@@ -40,7 +40,7 @@
   </header>
   <main>
     <section class="encre" id="encre" aria-labelledby="titre">
-      <span class="encre-arret" style="--k:0" aria-hidden="true"></span><span class="encre-arret" style="--k:1" aria-hidden="true"></span><span class="encre-arret" style="--k:2" aria-hidden="true"></span><span class="encre-arret" style="--k:3" aria-hidden="true"></span>
+      <span class="encre-arret" style="--k:0" aria-hidden="true"></span><span class="encre-arret" style="--k:1" aria-hidden="true"></span><span class="encre-arret" style="--k:2" aria-hidden="true"></span><span class="encre-arret" style="--k:3" aria-hidden="true"></span><span class="encre-arret" style="--k:4" aria-hidden="true"></span>
       <div class="encre-scene">
         <canvas id="encre-3d" aria-hidden="true"></canvas>
         <img class="encre-repli" src="assets/film/client.webp?v=5" width="1280" height="756" alt="">
@@ -51,24 +51,24 @@
             <p class="encre-intro">Une feuille de carton, six encres et un vernis, une forme de découpe, un filet de colle. Faites défiler pour suivre la matière jusqu’à l’étui.</p>
           </div>
           <ol class="encre-rail" aria-label="Étapes de fabrication">
-            <li data-actif=".045,.52"><span>01</span>Impression</li>
-            <li data-actif=".52,0.663"><span>02</span>Découpe</li>
-            <li data-actif="0.663,0.879"><span>03</span>Pliage-collage</li>
-            <li data-actif="0.879,1.01"><span>04</span>L’étui</li>
+            <li data-actif=".045,.512"><span>01</span>Impression</li>
+            <li data-actif=".512,0.658"><span>02</span>Découpe</li>
+            <li data-actif="0.658,0.814"><span>03</span>Pliage-collage</li>
+            <li data-actif="0.814,1.01"><span>04</span>L’étui</li>
           </ol>
           <aside class="encre-fiche" data-from=".05" data-to=".49"><span class="fiche-num">01 · Presse offset</span><b>L’impression</b><p>Jusqu’à six couleurs et un vernis en ligne : les quatre encres de quadrichromie et, en option, deux Pantone pour une teinte de marque exacte. Le vernis brillant protège le décor.</p><small>Pantone en option · jusqu’à 18 000 feuilles/h</small></aside>
-          <aside class="encre-fiche" data-from="0.514" data-to="0.645"><span class="fiche-num">02 · Autoplatine</span><b>La découpe</b><p>Une forme presse la feuille. Les filets coupants détachent les quatre poses, les filets de rainage marquent les futurs plis, et les déchets tombent.</p><small class="legende"><i class="l-coupe" aria-hidden="true"></i>Coupe <i class="l-rainage" aria-hidden="true"></i>Rainage</small></aside>
-          <aside class="encre-fiche" data-from="0.667" data-to="0.827"><span class="fiche-num">03 · Plieuse-colleuse</span><b>Le pliage-collage</b><p>Un filet de colle est déposé sur la patte latérale. Les pans se rabattent et le joint est pressé. L’étui repart à plat, il prendra son volume chez le client.</p><small>Patte latérale · joint pressé</small></aside>
+          <aside class="encre-fiche" data-from="0.522" data-to="0.652"><span class="fiche-num">02 · Autoplatine</span><b>La découpe</b><p>Une forme presse la feuille. Les filets coupants détachent les quatre poses, les filets de rainage marquent les futurs plis, et les déchets tombent.</p><small class="legende"><i class="l-coupe" aria-hidden="true"></i>Coupe <i class="l-rainage" aria-hidden="true"></i>Rainage</small></aside>
+          <aside class="encre-fiche" data-from="0.668" data-to="0.808"><span class="fiche-num">03 · Plieuse-colleuse</span><b>Le pliage-collage</b><p>Un filet de colle est déposé sur la patte latérale. Les pans se rabattent et le joint est pressé. L’étui repart à plat, il prendra son volume chez le client.</p><small>Patte latérale · joint pressé</small></aside>
           <div class="encre-teinte" data-from="0.085" data-to="0.128" data-edge=".008" style="--teinte:#b5492c"><span class="nuance" aria-hidden="true"></span><b>Pantone</b><small>Encre spéciale · en option</small></div>
           <div class="encre-teinte" data-from="0.135" data-to="0.178" data-edge=".008" style="--teinte:#16191a"><span class="nuance" aria-hidden="true"></span><b>Noir</b><small>Quadrichromie · 1/4</small></div>
           <div class="encre-teinte" data-from="0.185" data-to="0.228" data-edge=".008" style="--teinte:#0094c9"><span class="nuance" aria-hidden="true"></span><b>Cyan</b><small>Quadrichromie · 2/4</small></div>
           <div class="encre-teinte" data-from="0.235" data-to="0.278" data-edge=".008" style="--teinte:#d3166f"><span class="nuance" aria-hidden="true"></span><b>Magenta</b><small>Quadrichromie · 3/4</small></div>
           <div class="encre-teinte" data-from="0.285" data-to="0.328" data-edge=".008" style="--teinte:#f6c400"><span class="nuance" aria-hidden="true"></span><b>Jaune</b><small>Quadrichromie · 4/4</small></div>
           <div class="encre-teinte" data-from="0.335" data-to="0.385" data-edge=".008" style="--teinte:#1f4a3f"><span class="nuance" aria-hidden="true"></span><b>Pantone</b><small>Seconde encre spéciale · en option</small></div>
-          <div class="encre-teinte vernis" data-from="0.395" data-to="0.49" data-edge=".008" style="--teinte:#d9d4c8"><span class="nuance" aria-hidden="true"></span><b>Vernis</b><small>Brillant · protège et fait briller</small></div>
-          <div class="encre-etape" data-from="0.524" data-to="0.645"><b>Découpé.</b><small>Quatre poses sortent de la feuille.</small></div>
-          <div class="encre-etape" data-from="0.671" data-to="0.81"><b>Plié, collé.</b><small>Les rainages guident chaque pli.</small></div>
-          <div class="encre-etape fin" data-from="0.879" data-to="1.01"><b>Une boîte <em>Larré.</em></b><span class="encre-suite" id="lancer"><i class="scroll-icon" aria-hidden="true"></i> Continuez : nos boîtes</span></div>
+          <div class="encre-teinte vernis" data-from="0.395" data-to="0.505" data-edge=".008" style="--teinte:#d9d4c8"><span class="nuance" aria-hidden="true"></span><b>Vernis</b><small>Brillant · protège et fait briller</small></div>
+          <div class="encre-etape" data-from="0.53" data-to="0.652"><b>Découpé.</b><small>Quatre poses sortent de la feuille.</small></div>
+          <div class="encre-etape" data-from="0.672" data-to="0.808"><b>Plié, collé.</b><small>Les rainages guident chaque pli.</small></div>
+          <div class="encre-etape fin" data-from="0.9" data-to="1.01"><b>Une boîte <em>Larré.</em></b><span class="encre-suite" id="lancer"><i class="scroll-icon" aria-hidden="true"></i> Continuez : nos boîtes</span></div>
         </div>
         <p class="encre-avance" aria-live="polite"><i class="scroll-icon" aria-hidden="true"></i> <span id="encre-indice">Faites défiler : l’impression commence</span></p>
       </div>

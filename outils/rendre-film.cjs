@@ -14,7 +14,8 @@ async function render(base, directory, portrait, hd) {
   const browser = await chromium.launch({headless:true,executablePath,args:['--enable-unsafe-swiftshader']});
   let encoder;
   try {
-    const page = await browser.newPage({viewport:{width,height},deviceScaleFactor:1});
+    // HD is rendered at 1.5x and downscaled by FFmpeg: supersampling removes the jagged, pixelated edges.
+    const page = await browser.newPage({viewport:{width,height},deviceScaleFactor:hd?1.5:1});
     const url = new URL('render-frame',site).href;
     await page.route(url, route=>route.fulfill({contentType:'text/html',body:'<!doctype html><style>*{margin:0}canvas{display:block;width:100vw;height:100vh}</style><canvas></canvas>'}));
     await page.goto(url);
@@ -30,7 +31,7 @@ async function render(base, directory, portrait, hd) {
     // FROM and TO (frames) render one segment, so several processes can share a long film.
     const from=+(process.env.FROM||0), to=+(process.env.TO||52*24), part=process.env.FROM?'-'+String(from).padStart(4,'0'):'';
     const dest = path.join(directory,(hd?'fabrication-hd':portrait?'fabrication-mobile':'fabrication')+part+'.mp4');
-    encoder = spawn('ffmpeg',['-hide_banner','-loglevel','error','-y','-f','image2pipe','-framerate','24','-c:v','mjpeg','-i','pipe:0','-an','-c:v','libx264','-preset','fast','-crf',hd?'19':'20','-pix_fmt','yuv420p','-g','12','-keyint_min','12','-sc_threshold','0','-movflags','+faststart',dest],{stdio:['pipe','inherit','inherit']});
+    encoder = spawn('ffmpeg',['-hide_banner','-loglevel','error','-y','-f','image2pipe','-framerate','24','-c:v','mjpeg','-i','pipe:0','-an',...(hd?['-vf','scale=1920:1080:flags=lanczos']:[]),'-c:v','libx264','-preset',hd?'slow':'fast','-crf',hd?'17':'20','-pix_fmt','yuv420p','-g','12','-keyint_min','12','-sc_threshold','0','-movflags','+faststart',dest],{stdio:['pipe','inherit','inherit']});
     const finished = once(encoder,'close');
     for(let frame=from;frame<=to;frame++){
       const data = await page.evaluate(t=>window.renderFrame(t),frame/24);

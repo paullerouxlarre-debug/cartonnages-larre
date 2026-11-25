@@ -36,7 +36,8 @@ const PRINT = .52, Q0 = .445;
 const toQ = p => p < PRINT ? p * Q0 / PRINT : Q0 + (p - PRINT) * (1 - Q0) / (1 - PRINT);
 const toP = q => q < Q0 ? q * PRINT / Q0 : PRINT + (q - Q0) * (1 - PRINT) / (1 - Q0);
 // Découpe and stripping, then the folding of the hero pose.
-const CUT = [.445, .505], PRESS = [.505, .53], DROP = [.53, .6], AWAY = [.565, .64], SWAP = .615;
+// Each chapter ends on a settled frame: découpe is over by .60, the flat étui is glued by .78.
+const CUT = [.445, .505], PRESS = [.505, .525], DROP = [.525, .575], AWAY = [.545, .598], SWAP = .607;
 
 // Printed board revealed channel by channel from each impact point. Coordinates are in
 // world space; once a pour has spread it covers everything, so later motion keeps the print.
@@ -135,13 +136,15 @@ function ribbon(paths, width, material, y) {
 }
 
 export async function inkScene(canvas) {
-  const renderer = new T.WebGLRenderer({canvas, antialias: true, alpha: false, powerPreference: 'high-performance'});
+  const renderer = new T.WebGLRenderer({canvas, antialias: true, alpha: true, powerPreference: 'high-performance'});
+  renderer.setClearColor(0x000000, 0);
   renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = .82;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
   const scene = new T.Scene();
   // Seamless studio in the manner of a colour-chart film: the set takes the tint of each ink.
   const studio = new T.Color(0xefe8dc);
-  scene.background = studio;
+  // The studio colour is painted by the page behind a transparent canvas, with its paper grain;
+  // the floor only catches shadows, so the sheet itself stays clean white board.
   scene.fog = new T.Fog(studio, 3.4, 8);
   const env = await new RGBELoader().loadAsync('assets/matieres/atelier.hdr');
   env.mapping = T.EquirectangularReflectionMapping;
@@ -153,7 +156,7 @@ export async function inkScene(canvas) {
   key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -.0002; key.shadow.radius = 6;
   const rim = new T.DirectionalLight(0xffffff, .8); rim.position.set(1.4, .8, -1.6);
   scene.add(key, key.target, rim, new T.HemisphereLight(0xffffff, 0xcfc4b2, .55));
-  const floorMat = new T.MeshStandardMaterial({color: studio, roughness: .92});
+  const floorMat = new T.ShadowMaterial({color: 0x3a3226, opacity: .22});
   const floor = new T.Mesh(new T.CircleGeometry(12, 64), floorMat);
   floor.rotation.x = -Math.PI / 2; floor.position.y = -.002; floor.receiveShadow = true; scene.add(floor);
 
@@ -313,7 +316,7 @@ export async function inkScene(canvas) {
 
     // Once the varnish covers the sheet, a light reflection crosses it diagonally, then fades.
     const varnishHit = pours[6].start + FALL;
-    const sweep = clamp((p - varnishHit - .04) / .085);
+    const sweep = clamp((p - varnishHit - .03) / .07);
     const c0 = C0[0] * .6 + C0[1] * .8;
     sheen.value.z = c0 + mix(-.85, .85, sweep);
     sheen.value.w = ease(0, .12, sweep) * (1 - ease(.88, 1, sweep));
@@ -348,13 +351,13 @@ export async function inkScene(canvas) {
     sheet.poses[HERO].visible = !heroIsBox;
 
     // 3. Pliage-collage, then 4. erect, close and turn.
-    const glue = ease(.625, .675, p), fold = ease(.68, .73, p), back = ease(.725, .775, p);
-    const stand = ease(.78, .85, p), open = ease(.80, .87, p);
+    const glue = ease(.64, .69, p), fold = ease(.695, .74, p), back = ease(.735, .78, p);
+    const stand = ease(.79, .85, p), open = ease(.80, .87, p);
     const shutB = ease(.85, .9, p), shutT = ease(.88, .94, p);
-    const spin = ease(.78, 1, p) * Math.PI * 1.6 + Math.sin(clock * .5) * .03;
-    const lift = ease(.78, .87, p) * .1;
+    const spin = ease(.79, 1, p) * Math.PI * 1.6 + Math.sin(clock * .5) * .03;
+    const lift = ease(.79, .87, p) * .1;
     // Turn the flat pose so the glue tab and the folds face the camera.
-    const turn = TURN * ease(.6, .64, p) * (1 - ease(.76, .84, p));
+    const turn = TURN * ease(.615, .655, p) * (1 - ease(.79, .85, p));
     hero.pivot.visible = heroIsBox;
     hero.pose({x: 0, y: SHEET_Y + lift, z: 0, rise: stand * Math.PI / 2, yaw: spin + turn,
       foldLeft: fold, foldBack: back, glue: 0, open, closeBottom: shutB, closeTop: shutT});
@@ -388,20 +391,20 @@ export async function inkScene(canvas) {
     const stops = [0, ...pours.map(q => q.start + FALL), toP(CUT[0]), toP(.6), toP(.9)];
     let k = 0; while (k < stops.length - 2 && pPrint >= stops[k + 1]) k++;
     studio.set(tints[k]).lerp(new T.Color(tints[k + 1]), ease(stops[k + 1] - .03, stops[k + 1] + .025, pPrint));
-    floorMat.color.copy(studio); scene.fog.color.copy(studio);
+    scene.fog.color.copy(studio); canvas.parentElement.style.backgroundColor = '#' + studio.getHexString();
 
     // Camera: the whole sheet for the print and the cut, then in on the pose, then an orbit.
-    const onBox = ease(.56, .66, p);
+    const onBox = ease(.605, .68, p);
     target.lerpVectors(sheetCentre, boxCentre, onBox);
     hero.pivot.updateMatrixWorld(true);
-    target.lerp(hero.pivot.localToWorld(tmp.copy(erected)), ease(.76, .86, p));
+    target.lerp(hero.pivot.localToWorld(tmp.copy(erected)), ease(.79, .87, p));
     // Close in on the glue tab while the bead is laid.
-    const close = ease(.6, .63, p) * (1 - ease(.675, .705, p));
+    const close = ease(.62, .645, p) * (1 - ease(.69, .72, p));
     if (close > 0 && glueBead) target.lerp(glueBead.parent.localToWorld(tmp.set(0, 0, -stock.tab * .5)), close * .6);
-    const orbit = mix(-.35, .2, ease(0, .5, p)) + ease(.6, 1, p) * .7;
+    const orbit = mix(-.35, .2, ease(0, .44, p)) + ease(.605, .78, p) * .35 + ease(.79, 1, p) * .35;
     // The subject is shown large: the sheet fills the frame, the finished box overflows it.
-    const dist = (mix(1.3, 1.18, ease(.04, .3, p)) * (1 - onBox) + mix(.98, .6, ease(.77, .9, p)) * onBox - ease(.9, 1, p) * .2) * (1 - .2 * close) * (portrait ? 1.55 : 1);
-    const elev = mix(1.05, .62, ease(.02, .3, p)) * (1 - onBox) + mix(.8, .32, ease(.74, .9, p)) * onBox;
+    const dist = (mix(1.3, 1.18, ease(.04, .3, p)) * (1 - onBox) + mix(.98, .6, ease(.79, .9, p)) * onBox - ease(.9, 1, p) * .2) * (1 - .2 * close) * (portrait ? 1.55 : 1);
+    const elev = mix(1.05, .62, ease(.02, .3, p)) * (1 - onBox) + mix(.8, .32, ease(.79, .9, p)) * onBox;
     camera.position.set(target.x + Math.sin(orbit) * dist * Math.cos(elev), target.y + Math.sin(elev) * dist, target.z + Math.cos(orbit) * dist * Math.cos(elev));
     camera.lookAt(target);
     key.target.position.copy(target);
