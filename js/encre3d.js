@@ -286,7 +286,7 @@ export async function inkScene(canvas) {
     }
     // In landscape the captions sit on the left: shift the picture towards the right,
     // a little more for the finished box so the closing title never covers it.
-    if (w / h > 1.1) camera.setViewOffset(w, h, -w * (.1 + .09 * ease(.88, 1, progress)), 0, w, h); else camera.clearViewOffset();
+    if (w / h > 1.1) camera.setViewOffset(w, h, -w * (.1 + .15 * ease(.88, 1, progress)), 0, w, h); else camera.clearViewOffset();
     camera.updateProjectionMatrix();
     let p = clamp(progress);
     const portrait = w / h < .9, pPrint = p;
@@ -308,7 +308,7 @@ export async function inkScene(canvas) {
         const k = size * 1.6 * (1 - s * .6);
         d.scale.set(k, k * (1 + (1 - s) * 1.2), k);
       });
-      const spread = ease(hit, hit + SPREAD, p), soak = ease(hit + .03, hit + .11, p);
+      const spread = ease(hit, hit + SPREAD, p), soak = ease(hit + .03, hit + .09, p);
       // The front sweeps the whole sheet, then keeps going so the print stays complete.
       reveal.value[i * 4 + n].z = spread * .62 + ease(hit + SPREAD, 1, p) * 3;
       pool.visible = spread > 0 && soak < 1;
@@ -409,7 +409,7 @@ export async function inkScene(canvas) {
     // The visitor turns the finished box: the camera circles around its centre, so it stays in frame.
     const orbit = mix(-.35, .2, ease(0, .44, p)) + ease(.605, .78, p) * .35 + ease(.79, 1, p) * .35 - userYaw;
     // The subject is shown large: the sheet fills the frame, the finished box overflows it.
-    const dist = (mix(1.3, 1.18, ease(.04, .3, p)) * (1 - onBox) + mix(.98, .6, ease(.79, .9, p)) * onBox - ease(.9, 1, p) * .2) * (1 - .2 * close) * (portrait ? 1.55 + .6 * ease(.88, 1, p) : 1)
+    const dist = (mix(1.3, 1.18, ease(.04, .3, p)) * (1 - onBox) + mix(.98, .6, ease(.79, .9, p)) * onBox - ease(.9, 1, p) * .1) * (1 - .2 * close) * (portrait ? 1.55 + .6 * ease(.88, 1, p) : 1)
       // Step back a little while the box is being turned, so every face stays in frame.
       * (1 + .32 * userZoom);
     const elev = mix(1.05, .62, ease(.02, .3, p)) * (1 - onBox) + mix(.8, .32, ease(.79, .9, p)) * onBox + userTilt;

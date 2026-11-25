@@ -482,8 +482,6 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 .encre.tournable .encre-scene { cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 .encre.tourne .encre-scene { cursor: grabbing; }
 
-/* Pendant l'ouverture, la page reste en haut : les gestes jouent les étapes. */
-html.encre-tenue, html.encre-tenue body { overflow: hidden; overscroll-behavior: none; }
 .encre-rail button { all: unset; cursor: pointer; display: inline; pointer-events: auto; }
 .encre-rail button:focus-visible { outline: 2px solid #1b2b29; outline-offset: 4px; }
 .encre-rail li:hover { color: #1b2b29; }
@@ -500,6 +498,28 @@ html.encre-tenue, html.encre-tenue body { overflow: hidden; overscroll-behavior:
 html { scrollbar-gutter: stable; }
 .encre:not(.lance) .encre-rail button { pointer-events: none; }
 .encre.fini .encre-cmd[data-cmd=passer] { visibility: hidden; }
-/* La pastille remplace le lien « Continuez » quand l'ouverture est pilotée. */
-.encre-prete:not(.encre-fixe) .encre-suite { display: none; }
 @media (max-width: 720px) { .encre .encre-barre .encre-avance { white-space: normal; text-align: center; max-width: 100%; line-height: 1.4; } }
+
+/* Ouverture pilotée par boutons. */
+.encre-suivant { pointer-events: auto; display: inline-flex; align-items: center; gap: .9rem; padding: .9rem 1.3rem .9rem 1.5rem; border: 0; border-radius: 99px; cursor: pointer; background: #1b2b29; color: #f4efe5; font: .82rem var(--mono); letter-spacing: .1em; text-transform: uppercase; box-shadow: 0 12px 30px rgb(30 30 20 / 20%); transition: background .3s, color .3s, transform .2s; white-space: nowrap; }
+.encre-suivant i { font-style: normal; font-size: 1rem; transition: transform .25s; }
+.encre-suivant:hover { transform: translateY(-1px); }
+.encre-suivant:hover i { transform: translateX(3px); }
+.encre-suivant:focus-visible { outline: 2px solid #1b2b29; outline-offset: 3px; }
+.encre-suivant.en-cours { cursor: default; background: rgb(255 253 248 / 80%); color: #1b2b29; box-shadow: 0 8px 20px rgb(30 30 20 / 8%); transform: none; }
+.encre-suivant.en-cours i { animation: indice-attente 1.2s ease-in-out infinite; }
+.encre-suivant.revoir i { transform: rotate(-90deg); }
+@keyframes indice-attente { 50% { opacity: .25; } }
+.encre-cmd[hidden] { display: none; }
+.encre-astuce { position: absolute; left: 50%; bottom: calc(100% + .8rem); transform: translateX(-50%); margin: 0; display: flex; align-items: center; gap: .5rem; font: .72rem var(--mono); letter-spacing: .1em; text-transform: uppercase; color: #2f403c; white-space: nowrap; opacity: 0; transition: opacity .5s; pointer-events: none; }
+.encre.tournable:not(.a-tourne) .encre-astuce { opacity: 1; }
+.main-icone { width: 1.3rem; height: .8rem; position: relative; display: inline-block; }
+.main-icone::before, .main-icone::after { content: ""; position: absolute; top: 50%; width: .45rem; height: .45rem; border: solid currentColor; border-width: 0 0 1px 1px; transform: translateY(-50%) rotate(45deg); }
+.main-icone::before { left: 0; } .main-icone::after { right: 0; transform: translateY(-50%) rotate(-135deg); }
+.encre.tournable .encre-scene, .encre.tournable .encre-texte, .encre.tournable .encre-texte * { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.encre.tournable canvas { -webkit-user-drag: none; }
+@media (min-width: 721px) {
+  /* Découpe et pliage : la fiche passe à gauche pour laisser l'étui visible à droite. */
+  .encre-texte > .encre-fiche.gauche { right: auto; left: var(--gutter); top: clamp(8.5rem, 20vh, 11rem); }
+}
+@media (max-width: 720px) { .encre-suivant { font-size: .68rem; padding: .8rem 1.1rem; } .encre-barre { display: flex; flex-direction: column-reverse; } .encre-astuce { position: static; transform: none; } }
