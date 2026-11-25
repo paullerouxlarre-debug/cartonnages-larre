@@ -454,8 +454,16 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 /* Ouverture en chapitres : chaque arrêt de défilement lance un chapitre du film. */
 html { scroll-snap-type: y proximity; }
 .encre-arret { position: absolute; left: 0; width: 1px; height: 1px; top: calc(var(--k) * (100% - 100svh) / 4); scroll-snap-align: start; scroll-snap-stop: always; }
-.encre .encre-avance { opacity: 0; transition: opacity .5s; }
+.encre .encre-avance { opacity: 0; transition: opacity .5s; bottom: clamp(1.2rem, 4vh, 2.4rem); padding: .75rem 1.2rem; border-radius: 99px; background: rgb(27 43 41 / 88%); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgb(30 30 20 / 18%); color: #f4efe5; font-size: .82rem; white-space: nowrap; }
 .encre .encre-avance.visible { opacity: 1; }
+.encre .encre-avance::after { content: "↓"; font-size: 1rem; animation: indice-bas 1.6s ease-in-out infinite; }
+.encre .encre-avance .scroll-icon::before { animation: indice-molette 1.6s ease-in-out infinite; }
+.encre .encre-avance.lecture { background: rgb(255 253 248 / 80%); color: #1b2b29; }
+.encre .encre-avance.lecture::after, .encre .encre-avance.lecture .scroll-icon { display: none; }
+@keyframes indice-bas { 0%, 100% { transform: translateY(-2px); opacity: .5; } 50% { transform: translateY(3px); opacity: 1; } }
+@keyframes indice-molette { 0% { transform: translateY(0); opacity: 1; } 70% { transform: translateY(.35rem); opacity: 0; } 100% { opacity: 0; } }
+@media (max-width: 560px) { .encre .encre-avance { font-size: .7rem; letter-spacing: .06em; padding: .65rem .95rem; } }
+@media (prefers-reduced-motion: reduce) { .encre .encre-avance::after, .encre .encre-avance .scroll-icon::before { animation: none; } }
 
 /* Page process : un film à lancer, avec ses chapitres. */
 .lecteur { background: #102120; padding: clamp(2rem, 6vh, 4rem) 0 clamp(3rem, 8vh, 5rem); }

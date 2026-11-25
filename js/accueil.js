@@ -7,11 +7,11 @@ const canvas = document.getElementById("encre-3d");
 const labels = [...section.querySelectorAll("[data-from]")].map(el => ({el, from: +el.dataset.from, to: +el.dataset.to, edge: +(el.dataset.edge || .018)}));
 // Chapter ends in scene time, their playing time in seconds, and the hint shown once each one is over.
 const chapters = [
-  {end: 0, seconds: 1, hint: "Faites défiler : l’impression commence"},
-  {end: .512, seconds: 15, hint: "Défilez : la découpe"},
-  {end: .658, seconds: 6, hint: "Défilez : le pliage-collage"},
-  {end: .814, seconds: 6, hint: "Défilez : l’étui prend forme"},
-  {end: 1, seconds: 9, hint: ""}
+  {end: 0, seconds: 1, hint: "Faites défiler pour lancer l’impression"},
+  {end: .512, seconds: 28, hint: "Impression terminée · défilez pour la découpe", playing: "Étape 1/4 · l’impression en cours"},
+  {end: .658, seconds: 12, hint: "Découpe terminée · défilez pour le pliage-collage", playing: "Étape 2/4 · la découpe en cours"},
+  {end: .814, seconds: 12, hint: "Pliage terminé · défilez pour monter l’étui", playing: "Étape 3/4 · le pliage-collage en cours"},
+  {end: 1, seconds: 13, hint: "", playing: "Étape 4/4 · l’étui prend forme"}
 ];
 const hint = document.getElementById("encre-indice"), hintBox = hint?.parentElement;
 const steps = [...section.querySelectorAll("[data-actif]")].map(el => { const [from, to] = el.dataset.actif.split(",").map(Number); return {el, from, to}; });
@@ -66,9 +66,12 @@ function render(now) {
   const moving = advance(now);
   fade(labels, progress);
   if (hintBox) {
-    const c = chapters[chapter], idle = !moving && c.hint;
-    if (idle && hint.textContent !== c.hint) hint.textContent = c.hint;
-    hintBox.classList.toggle("visible", !!idle);
+    // At rest: invite to scroll. While a chapter plays: say which step is on screen.
+    const c = chapters[chapter], idle = !moving && !!c.hint, playing = moving && progress < c.end && chapters.find(x => x.end > progress + 1e-6)?.playing;
+    const text = idle ? c.hint : playing || "";
+    if (text && hint.textContent !== text) hint.textContent = text;
+    hintBox.classList.toggle("visible", !!text);
+    hintBox.classList.toggle("lecture", !idle);
   }
   for (const s of steps) s.el.classList.toggle("actif", progress >= s.from && progress < s.to);
   section.style.setProperty("--p", progress.toFixed(4));
