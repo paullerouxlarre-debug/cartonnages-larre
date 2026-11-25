@@ -276,7 +276,8 @@ export async function inkScene(canvas) {
   const erected = hero.pivot.worldToLocal(new T.Box3().setFromObject(hero.pivot).getCenter(new T.Vector3()));
 
   let width = 0, height = 0;
-  function draw(progress, clock = 0) {
+  function draw(progress, clock = 0, view = {}) {
+    const userYaw = view.yaw || 0, userTilt = view.tilt || 0;
     const w = canvas.clientWidth, h = canvas.clientHeight;
     if (w !== width || h !== height) {
       width = w; height = h;
@@ -359,7 +360,7 @@ export async function inkScene(canvas) {
     // Turn the flat pose so the glue tab and the folds face the camera.
     const turn = TURN * ease(.615, .655, p) * (1 - ease(.79, .85, p));
     hero.pivot.visible = heroIsBox;
-    hero.pose({x: 0, y: SHEET_Y + lift, z: 0, rise: stand * Math.PI / 2, yaw: spin + turn,
+    hero.pose({x: 0, y: SHEET_Y + lift, z: 0, rise: stand * Math.PI / 2, yaw: spin + turn + userYaw,
       foldLeft: fold, foldBack: back, glue: 0, open, closeBottom: shutB, closeTop: shutT});
     // The glue thread follows the head of the bead along the tab.
     const run = tabRun * glue, x0 = -tabRun / 2;
@@ -404,7 +405,7 @@ export async function inkScene(canvas) {
     const orbit = mix(-.35, .2, ease(0, .44, p)) + ease(.605, .78, p) * .35 + ease(.79, 1, p) * .35;
     // The subject is shown large: the sheet fills the frame, the finished box overflows it.
     const dist = (mix(1.3, 1.18, ease(.04, .3, p)) * (1 - onBox) + mix(.98, .6, ease(.79, .9, p)) * onBox - ease(.9, 1, p) * .2) * (1 - .2 * close) * (portrait ? 1.55 : 1);
-    const elev = mix(1.05, .62, ease(.02, .3, p)) * (1 - onBox) + mix(.8, .32, ease(.79, .9, p)) * onBox;
+    const elev = mix(1.05, .62, ease(.02, .3, p)) * (1 - onBox) + mix(.8, .32, ease(.79, .9, p)) * onBox + userTilt;
     camera.position.set(target.x + Math.sin(orbit) * dist * Math.cos(elev), target.y + Math.sin(elev) * dist, target.z + Math.cos(orbit) * dist * Math.cos(elev));
     camera.lookAt(target);
     key.target.position.copy(target);

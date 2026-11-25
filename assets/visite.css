@@ -452,8 +452,7 @@ figcaption a, .transcription a, .footline a { text-decoration: underline; text-u
 }
 
 /* Ouverture en chapitres : chaque arrêt de défilement lance un chapitre du film. */
-html { scroll-snap-type: y proximity; }
-.encre-arret { position: absolute; left: 0; width: 1px; height: 1px; top: calc(var(--k) * (100% - 100svh) / 4); scroll-snap-align: start; scroll-snap-stop: always; }
+.encre-arret { position: absolute; left: 0; width: 1px; height: 1px; top: calc(var(--k) * (100% - 100svh) / 4); }
 .encre .encre-avance { opacity: 0; transition: opacity .5s; bottom: clamp(1.2rem, 4vh, 2.4rem); padding: .75rem 1.2rem; border-radius: 99px; background: rgb(27 43 41 / 88%); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgb(30 30 20 / 18%); color: #f4efe5; font-size: .82rem; white-space: nowrap; }
 .encre .encre-avance.visible { opacity: 1; }
 .encre .encre-avance::after { content: "↓"; font-size: 1rem; animation: indice-bas 1.6s ease-in-out infinite; }
@@ -480,3 +479,7 @@ html { scroll-snap-type: y proximity; }
 .chapitres button span { display: block; margin-bottom: .25rem; font: .7rem var(--mono); letter-spacing: .12em; color: #e3916f; }
 .chapitres button:hover, .chapitres button[aria-current] { border-top-color: #c64a25; background: rgb(244 239 229 / 10%); color: #fff; }
 @media (max-width: 720px) { .chapitres { grid-template-columns: 1fr 1fr; } .chapitres li:last-child { grid-column: span 2; } }
+
+/* La boîte terminée se tourne à la main. */
+.encre.tournable .encre-scene { cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.encre.tourne .encre-scene { cursor: grabbing; }
