@@ -178,7 +178,7 @@ export function offsetPass(root,props,machine) {
       }
     }
     for(let i=barIndex;i<bars.length;i++)bars[i].place(null);
-    machine.animate(t,{travel:clock,cutaway:t>=4.29?1:0,feederY:cupY,feederX:cupShift,
+    machine.animate(t,{travel:clock,cutaway:t>=4.7?1:0,feederY:cupY,feederX:cupShift,
       forwarding:transfer,lay:layOpen,sidePull:pull,offsetClock:clock});
   };
 }

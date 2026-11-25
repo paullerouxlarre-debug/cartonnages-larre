@@ -223,22 +223,52 @@ const shots=[
   [45,4,[.17,1.15,-.04],[-.35,.26,.43],.85,.68],
   [47.6,4,[-.09,1.017,.08],[-.34,.16,.29],.53,.445]
 ];
+// The camera's lens: depth of field, a contact ambient occlusion read from the depth buffer,
+// a soft halo around bright metal, a filmic grade, a light vignette and a fine grain.
 function lens(scene,renderer) {
   const target=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,depthBuffer:true});
   target.samples=renderer.capabilities.isWebGL2?2:0;
   target.depthTexture=new T.DepthTexture(1,1);
-  const uniforms={colour:{value:target.texture},depthMap:{value:target.depthTexture},pixel:{value:new T.Vector2()},focus:{value:1},near:{value:.012},far:{value:90}};
+  const uniforms={colour:{value:target.texture},depthMap:{value:target.depthTexture},pixel:{value:new T.Vector2()},focus:{value:1},near:{value:.012},far:{value:90},seed:{value:0},aspect:{value:1}};
   const shader=new T.ShaderMaterial({uniforms,depthTest:false,depthWrite:false,vertexShader:'varying vec2 coord; void main(){coord=uv;gl_Position=vec4(position.xy,0.,1.);}',
-    fragmentShader:`varying vec2 coord;uniform sampler2D colour,depthMap;uniform vec2 pixel;uniform float focus,near,far;
-    void main(){float d=texture2D(depthMap,coord).r;float z=near*far/(far-d*(far-near));float blur=min(5.,abs(1.-focus/z)*4.2);
-    vec3 c=texture2D(colour,coord).rgb*2.;for(int i=0;i<12;i++){float a=float(i)*2.39996;vec2 p=vec2(cos(a),sin(a))*sqrt((float(i)+.5)/12.);c+=texture2D(colour,coord+pixel*blur*p).rgb;}
-    c/=14.; c*=1.-.06*dot(coord-.5,coord-.5);gl_FragColor=vec4(c,1.);
-    #include <tonemapping_fragment>
-    #include <colorspace_fragment>
+    fragmentShader:`varying vec2 coord;uniform sampler2D colour,depthMap;uniform vec2 pixel;uniform float focus,near,far,seed,aspect;
+    float lin(vec2 p){float d=texture2D(depthMap,p).r;return near*far/(far-d*(far-near));}
+    float hash(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233))+seed*17.31)*43758.5453);}
+    void main(){
+      float z=lin(coord);
+      float blur=min(5.,abs(1.-focus/z)*4.2);
+      vec3 c=texture2D(colour,coord).rgb*2.;
+      for(int i=0;i<12;i++){float a=float(i)*2.39996;vec2 p=vec2(cos(a),sin(a))*sqrt((float(i)+.5)/12.);c+=texture2D(colour,coord+pixel*blur*p).rgb;}
+      c/=14.;
+      // Ambient occlusion: neighbours nearer to the camera, within a few centimetres, shade the pixel.
+      float r=clamp(.045/z,.002,.06), occ=0.;
+      float turn=hash(coord*913.)*6.283;
+      for(int i=0;i<16;i++){
+        float a=float(i)*2.39996+turn, k=sqrt((float(i)+.5)/16.);
+        vec2 o=vec2(cos(a)/aspect,sin(a))*r*k;
+        float dz=z-lin(coord+o);
+        occ+=smoothstep(.002*z,.02*z,dz)*(1.-smoothstep(.06*z+.02,.25*z+.05,dz));
+      }
+      c*=1.-.55*occ/16.;
+      // Halo: the brightest highlights bleed a little into their surroundings.
+      vec3 glow=vec3(0.);
+      for(int i=0;i<10;i++){float a=float(i)*2.39996;vec2 p=vec2(cos(a),sin(a))*(6.+float(i)*2.2);glow+=max(texture2D(colour,coord+pixel*p).rgb-vec3(1.1),0.);}
+      c+=glow*.045;
+      c*=1.-.07*dot(coord-.5,coord-.5)*2.;
+      gl_FragColor=vec4(c,1.);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+      // Grade: a gentle S-curve, warm highlights and slightly cool shadows, then grain.
+      vec3 g=gl_FragColor.rgb;
+      g=mix(g,g*g*(3.-2.*g),.22);
+      float l=dot(g,vec3(.299,.587,.114));
+      g+=vec3(.012,.004,-.012)*smoothstep(.45,1.,l)+vec3(-.006,0.,.01)*(1.-smoothstep(0.,.35,l));
+      g+=(hash(coord*vec2(1931.,1277.))-.5)*.022;
+      gl_FragColor.rgb=clamp(g,0.,1.);
     }`});
   const pass=new T.Scene();pass.add(new T.Mesh(new T.PlaneGeometry(2,2),shader));
   const flat=new T.Camera();
-  return {resize(w,h){target.setSize(w,h);uniforms.pixel.value.set(1/w,1/h);},draw(camera,distance){uniforms.focus.value=distance;renderer.setRenderTarget(target);renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(pass,flat);}};
+  return {resize(w,h){target.setSize(w,h);uniforms.pixel.value.set(1/w,1/h);uniforms.aspect.value=w/h;},draw(camera,distance,time=0){uniforms.focus.value=distance;uniforms.seed.value=(time*24)%97;renderer.setRenderTarget(target);renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(pass,flat);}};
 }
 
 export async function atelierRenderer(canvas) {
@@ -258,7 +288,7 @@ export async function atelierRenderer(canvas) {
   const props=loadingProps(wood),sets=new Map();
   hall(scene,props);
   const sun=new T.DirectionalLight(0xfff2e1,1.25);
-  sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+  sun.castShadow=true;sun.shadow.mapSize.set(4096,4096);sun.shadow.radius=3;
   Object.assign(sun.shadow.camera,{near:.05,far:25,left:-2,right:2,top:2,bottom:-2});
   sun.shadow.normalBias=.00022;sun.shadow.bias=-.00009;scene.add(sun,sun.target);
   // A bright, even workshop: skylight fill plus the key light.
@@ -313,12 +343,19 @@ export async function atelierRenderer(canvas) {
     }
     aim.applyAxisAngle(vector(0,1,0),set.root.rotation.y);
     direction.applyAxisAngle(vector(0,1,0),set.root.rotation.y);
-    camera.position.copy(aim).addScaledVector(direction,distance);camera.lookAt(aim);
+    // A camera operator, not a rail: each shot drifts round its subject by a few degrees,
+    // with a slow, slight breathing of the hand. The drift is the same at every render.
+    direction.applyAxisAngle(vector(0,1,0),(v-.5)*.07*(k%2?1:-1));
+    camera.position.copy(aim).addScaledVector(direction,distance);
+    const hand=distance*.0045;
+    camera.position.x+=hand*(Math.sin(t*.73+k)*.6+Math.sin(t*1.91+k*2)*.4);
+    camera.position.y+=hand*(Math.sin(t*.57+k*3)*.6+Math.sin(t*1.37)*.3);
+    camera.lookAt(aim);
     if(!vertical)camera.setViewOffset(w,h,-w*.065,-h*.025,w,h);else camera.clearViewOffset();
     sun.position.copy(aim).add(vector(-3.0,6.5,2.6));sun.target.position.copy(aim);
-    const radius=distance<.8?.60:distance<1.6?1.45:3.8;
+    const radius=distance<.8?.60:distance<1.6?1.45:distance<4?3.8:7.5;
     Object.assign(sun.shadow.camera,{left:-radius,right:radius,top:radius,bottom:-radius});sun.shadow.camera.updateProjectionMatrix();
-    grading.draw(camera,distance);
+    grading.draw(camera,distance,t);
   }
   return {draw};
 }

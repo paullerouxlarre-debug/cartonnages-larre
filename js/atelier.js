@@ -1,6 +1,7 @@
 import * as T from '../assets/vendor/three.module.min.js';
 import * as carton from './etui.js';
 import {offsetLayout} from './impression.js';
+import {dress} from './habillage.js';
 import {paperLine as line, paint as p, box, cylinder, group, mesh, bar, panel, cabinet, bolt, hose,
   feet, dial, adjustableGuide, footboard, roller, safetyLabel, controlPanel, feeder, pack} from './machines-pieces.js';
 
@@ -520,6 +521,7 @@ export function buildStation(parent,kind) {
   const build=builders[kind];
   if(!build)throw new RangeError('Poste de fabrication inconnu : '+kind);
   const parts=build(fixed,cover,motion,moving);
+  dress(kind,fixed,cover);
   pack(fixed);
   pack(cover);
   for(const part of moving)pack(part.carrier);
